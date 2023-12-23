@@ -9,17 +9,19 @@ const db = new Database("neurobot.db");
 const client = new BotClient({
     intents: [
         GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
     ],
     allowedMentions: {
         parse: [],
         repliedUser: true,
     },
-});
+}, db);
 
 client.once(Events.ClientReady, async () => {
     console.log('Ready!');
 
-    await client.loadInteractions(db);
+    await client.loadInteractions();
 });
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
@@ -67,3 +69,9 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 });
 
 client.login(config.token);
+
+process.on('SIGINT', async () => {
+    console.info('\nGoodbye');
+    await client.destroy();
+    process.exit(0);
+});

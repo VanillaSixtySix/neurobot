@@ -1,7 +1,22 @@
-import { Database } from 'bun:sqlite';
-import { AutocompleteInteraction, ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { AutocompleteInteraction, ChatInputCommandInteraction, Events, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
-import config from '../../../config.toml';
+import { BotClient } from '../classes/BotClient';
+
+interface RawPacket<T> {
+    t: string;
+    d: T;
+}
+
+interface RawPacketReactionData {
+    /** The ID of the user who owns/owned the reaction */
+    user_id: string;
+    message_id: string;
+    guild_id: string;
+    emoji: {
+        name: string;
+        id: string;
+    };
+}
 
 export default {
     data: new SlashCommandBuilder()
@@ -69,15 +84,28 @@ export default {
                         .setRequired(true)
                 )
         ),
-    init(db: Database) {
-        db.exec(`
-            CREATE TABLE IF NOT EXISTS reaction_bans (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+    async init(client: BotClient) {
+        client.db.exec(`
+            CREATE TABLE IF NOT EXISTS reactions (
                 guild_id TEXT NOT NULL,
+                message_id TEXT NOT NULL,
+                reactor_id TEXT NOT NULL,
                 emoji TEXT NOT NULL,
-                enabled INTEGER NOT NULL DEFAULT 1
+                timestamp INTEGER NOT NULL,
+                active INTEGER NOT NULL DEFAULT 1
             )
         `);
+
+        client.on(Events.Raw, async (packet: RawPacket<RawPacketReactionData>) => {
+            if (packet.t === 'MESSAGE_REACTION_ADD') {
+                const stmt = client.db.query('INSERT INTO reactions VALUES (?, ?, ?, ?, ?, 1)');
+                stmt.run(packet.d.guild_id, packet.d.message_id, packet.d.user_id, packet.d.emoji.name, Date.now());
+            } else if (packet.t === 'MESSAGE_REACTION_REMOVE') {
+                const stmt = client.db.query('UPDATE reactions SET active = 0 WHERE guild_id = ? AND message_id = ? AND reactor_id = ? AND emoji = ?');
+                stmt.run(packet.d.guild_id, packet.d.message_id, packet.d.user_id, packet.d.emoji.name);
+            }
+        });
+
     },
     async autocomplete(interaction: AutocompleteInteraction) {
         const focusedOption = interaction.options.getFocused(true);
@@ -95,10 +123,37 @@ export default {
     },
     async execute(interaction: ChatInputCommandInteraction) {
         const subCommand = interaction.options.getSubcommand();
+        const client = interaction.client as BotClient;
 
         if (subCommand === 'first') {
             const message = interaction.options.getString('message', true);
-            await interaction.reply(`first; message is \`${message}\``);
+            const stmt = client.db.query('SELECT * FROM reactions WHERE guild_id = ? AND message_id = ? ORDER BY timestamp ASC');
+            const dbRes = stmt.all(interaction.guildId, message) as any;
+            // console.debug(dbRes);
+            const groupedByReactor = dbRes.reduce((acc: any, cur: any) => {
+                if (acc[cur.reactor_id] == null) {
+                    acc[cur.reactor_id] = [];
+                }
+                acc[cur.reactor_id].push(cur);
+                return acc;
+            }, {} as Record<string, typeof dbRes>);
+            console.debug(groupedByReactor);
+
+            let response = '';
+
+            for (const [reactorId, reactions] of Object.entries(groupedByReactor)) {
+                const reactor = await client.users.fetch(reactorId);
+                if (reactor == null) {
+                    console.warn(`User ${reactorId} not found`);
+                    continue;
+                }
+                response += `**${reactor.tag}**\n`;
+                for (const reaction of reactions as any[]) {
+                    response += `${reaction.emoji} <t:${Math.floor(reaction.timestamp / 1000)}:T>\n`;
+                }
+            }
+
+            await interaction.reply(response);
             return;
         } else if (subCommand === 'ban') {
             const emoji = interaction.options.getString('emoji', true);

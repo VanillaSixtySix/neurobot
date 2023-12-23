@@ -6,18 +6,20 @@ import { listFiles } from '../utils';
 
 export class BotClient extends Client {
     interactions: Collection<string, BotInteraction>;
+    db: Database;
 
-    constructor(options: ClientOptions) {
+    constructor(options: ClientOptions, db: Database) {
         super(options);
 
+        this.db = db;
         this.interactions = new Collection();
     }
 
-    async loadInteractions(db: Database) {
+    async loadInteractions() {
         const interactionPaths = listFiles(path.join(import.meta.dir, '../interactions'), true);
 
         for (const file of interactionPaths) {
-            const interaction = (await import(file)).default;
+            const interaction = (await import(file)).default as BotInteraction;
 
             // if interaction is not a BotInteraction, warn and skip
             if (!('data' in interaction) || !('execute' in interaction)) {
@@ -25,7 +27,16 @@ export class BotClient extends Client {
                 continue;
             }
 
+            if (typeof interaction.init === 'function') {
+                await interaction.init(this);
+            }
+
             this.interactions.set(interaction.data.name, interaction);
         }
+    }
+
+    destroy() {
+        this.db.close();
+        return super.destroy();
     }
 }
