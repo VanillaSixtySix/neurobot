@@ -1,12 +1,14 @@
 import { Database } from 'bun:sqlite';
-import { AutocompleteInteraction, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { AutocompleteInteraction, ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import config from '../../../config.toml';
 
 export default {
     data: new SlashCommandBuilder()
         .setName('reactions')
-        .setDescription('Reactions utility')
+        .setDescription('Utilities for handling reactions')
+        .setDMPermission(false)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
         .addSubcommand(subCommand =>
             subCommand
                 .setName('first')
@@ -20,46 +22,62 @@ export default {
         )
         .addSubcommand(subCommand => 
             subCommand
-                .setName('test')
-                .setDescription('Test subcommand')
+                .setName('ban')
+                .setDescription('Bans a reaction')
                 .addStringOption(option => 
                     option
-                        .setName('testoption')
-                        .setDescription('This is a test option')
+                        .setName('emoji')
+                        .setDescription('The emoji name or ID to ban')
                         .setAutocomplete(true)
+                )
+        )
+        .addSubcommand(subCommand =>
+            subCommand
+                .setName('unban')
+                .setDescription('Unbans a reaction')
+                .addStringOption(option =>
+                    option
+                        .setName('emoji')
+                        .setDescription('The index of the ban to remove')
+                        .setAutocomplete(true)
+                )
+        )
+        .addSubcommand(subCommand =>
+            subCommand
+                .setName('list')
+                .setDescription('Lists all bans')
+        )
+        .addSubcommand(subCommand =>
+            subCommand
+                .setName('enable')
+                .setDescription('Enables a previously disabled ban')
+                .addIntegerOption(option =>
+                    option
+                        .setName('index')
+                        .setDescription('The index of the ban to enable')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subCommand =>
+            subCommand
+                .setName('disable')
+                .setDescription('Disables a ban without deleting')
+                .addIntegerOption(option =>
+                    option
+                        .setName('index')
+                        .setDescription('The index of the ban to disable')
+                        .setRequired(true)
                 )
         ),
     init(db: Database) {
         db.exec(`
-            CREATE TABLE IF NOT EXISTS reactions (
-                message_id INTEGER NOT NULL,
-                channel_id INTEGER NOT NULL,
-                guild_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
+            CREATE TABLE IF NOT EXISTS reaction_bans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id TEXT NOT NULL,
                 emoji TEXT NOT NULL,
-                removed INTEGER DEFAULT 0,
-                nth INTEGER NOT NULL,
-                time INTEGER NOT NULL,
-                hit_groups TEXT,
-                PRIMARY KEY (message_id, channel_id, guild_id, emoji, time)
-            );
-        `);
-        db.exec(`
-            CREATE TABLE IF NOT EXISTS reaction_groups (
-                guild_id INTEGER NOT NULL,
-                enabled INTEGER NOT NULL DEFAULT 1,
-                name TEXT NOT NULL,
-                match TEXT NOT NULL,
-                match_type INTEGER NOT NULL DEFAULT 0,
-                builtin INTEGER NOT NULL DEFAULT 0,
-                channel_list_type INTEGER NOT NULL DEFAULT 0,
-                PRIMARY KEY (guild_id, name)
+                enabled INTEGER NOT NULL DEFAULT 1
             )
         `);
-        db.exec(`
-            INSERT OR REPALCE INTO reaction_groups (guild_id, name, match, builtin)
-            VALUES (?, ?, ?, ?)
-        `, [config.interactions.reactions, 'Country Flags', '[\U0001F1E6-\U0001F1FF]{2}', 1]);
     },
     async autocomplete(interaction: AutocompleteInteraction) {
         const focusedOption = interaction.options.getFocused(true);
@@ -82,15 +100,35 @@ export default {
             const message = interaction.options.getString('message', true);
             await interaction.reply(`first; message is \`${message}\``);
             return;
-        } else if (subCommand === 'test') {
-            const testoption = interaction.options.getString('testoption');
-            if (testoption == null) {
-                await interaction.reply('test; no options provided');
-                return;
-            }
-            await interaction.reply(`test; testoption is \`${testoption}\``);
+        } else if (subCommand === 'ban') {
+            const emoji = interaction.options.getString('emoji', true);
+            await interaction.reply(`ban; emoji is \`${emoji}\``);
+            return;
+        } else if (subCommand === 'unban') {
+            const emoji = interaction.options.getString('emoji', true);
+            await interaction.reply(`unban; emoji is \`${emoji}\``);
+            return;
+        } else if (subCommand === 'list') {
+            await interaction.reply('list');
+            return;
+        } else if (subCommand === 'enable') {
+            const index = interaction.options.getInteger('index', true);
+            await interaction.reply(`enable; index is \`${index}\``);
+            return;
+        } else if (subCommand === 'disable') {
+            const index = interaction.options.getInteger('index', true);
+            await interaction.reply(`disable; index is \`${index}\``);
             return;
         }
+        // } else if (subCommand === 'test') {
+        //     const testoption = interaction.options.getString('testoption');
+        //     if (testoption == null) {
+        //         await interaction.reply('test; no options provided');
+        //         return;
+        //     }
+        //     await interaction.reply(`test; testoption is \`${testoption}\``);
+        //     return;
+        // }
         await interaction.reply(`subcommand: \`${subCommand}\``);
     },
 } as BotInteraction;
