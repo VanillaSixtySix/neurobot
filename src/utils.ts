@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { BotCommand } from './classes/BotCommand';
+import { BotInteraction } from './classes/BotInteraction';
 
 export function listFiles(dir: string, includeExactPath = false, fileList: string[] = []): string[] {
     const files = fs.readdirSync(dir);
@@ -23,24 +23,24 @@ export function listFiles(dir: string, includeExactPath = false, fileList: strin
     return fileList;
 }
 
-export async function getCommands(dir: string): Promise<BotCommand[]> {
+export async function getInteractions(dir: string): Promise<BotInteraction[]> {
     const files = listFiles(dir);
 
-    const commandPaths = files.map(file => path.join(import.meta.dir, file));
+    const interactionPaths = files.map(file => path.join(import.meta.dir, file));
 
-    const commands: BotCommand[] = [];
+    const interactions: BotInteraction[] = [];
 
-    for (const file of commandPaths) {
-        const command = (await import(file)).default;
+    for (const file of interactionPaths) {
+        const interaction = (await import(file)).default;
 
-        // if command is not a BotCommand, warn and skip
-        if (!('data' in command) || !('execute' in command)) {
-            console.warn(`Command file ${file} is not a BotCommand`);
+        // if interaction is not a BotInteraction, warn and skip
+        if (!('data' in interaction) || !('execute' in interaction)) {
+            console.warn(`File ${file} is not a BotInteraction`);
             continue;
         }
 
-        commands.push(command.data.toJSON());
+        interactions.push(interaction.data.toJSON());
     }
 
-    return commands;
+    return interactions;
 }

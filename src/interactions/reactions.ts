@@ -1,5 +1,7 @@
+import { Database } from 'bun:sqlite';
 import { AutocompleteInteraction, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
-import { BotCommand } from '../classes/BotCommand';
+import { BotInteraction } from '../classes/BotInteraction';
+import config from '../../../config.toml';
 
 export default {
     data: new SlashCommandBuilder()
@@ -27,6 +29,38 @@ export default {
                         .setAutocomplete(true)
                 )
         ),
+    init(db: Database) {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS reactions (
+                message_id INTEGER NOT NULL,
+                channel_id INTEGER NOT NULL,
+                guild_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                emoji TEXT NOT NULL,
+                removed INTEGER DEFAULT 0,
+                nth INTEGER NOT NULL,
+                time INTEGER NOT NULL,
+                hit_groups TEXT,
+                PRIMARY KEY (message_id, channel_id, guild_id, emoji, time)
+            );
+        `);
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS reaction_groups (
+                guild_id INTEGER NOT NULL,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                name TEXT NOT NULL,
+                match TEXT NOT NULL,
+                match_type INTEGER NOT NULL DEFAULT 0,
+                builtin INTEGER NOT NULL DEFAULT 0,
+                channel_list_type INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (guild_id, name)
+            )
+        `);
+        db.exec(`
+            INSERT OR REPALCE INTO reaction_groups (guild_id, name, match, builtin)
+            VALUES (?, ?, ?, ?)
+        `, [config.interactions.reactions, 'Country Flags', '[\U0001F1E6-\U0001F1FF]{2}', 1]);
+    },
     async autocomplete(interaction: AutocompleteInteraction) {
         const focusedOption = interaction.options.getFocused(true);
 
@@ -59,4 +93,4 @@ export default {
         }
         await interaction.reply(`subcommand: \`${subCommand}\``);
     },
-} as BotCommand;
+} as BotInteraction;
