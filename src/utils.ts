@@ -44,3 +44,20 @@ export async function getInteractions(dir: string): Promise<BotInteraction[]> {
 
     return interactions;
 }
+
+/**
+ * Parses the given Discord message URL or ID and returns the message ID
+ * @param input The Discord message URL or ID
+ */
+export function parseMessageInput(input: string) {
+    // https://discord.com/channels/933772482127749160/933772482127749163/1188544063260074064
+    // 1188544063260074064
+    input = input.trim();
+    if (!input.startsWith('https')) {
+        return input;
+    }
+    const url = new URL(input);
+    const path = url.pathname;
+    const split = path.split('/');
+    return split[split.length - 1];
+}

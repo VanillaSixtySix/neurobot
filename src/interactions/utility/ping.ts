@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../../classes/BotInteraction';
+import { BotClient } from '../../classes/BotClient';
 
 const lastDiscordAPIPing = {
     timestamp: -1,
@@ -12,15 +13,20 @@ interface DayMetricResponse {
     };
 }
 
-export default {
-    data: new SlashCommandBuilder()
-        .setName('ping')
-        .setDescription('Gets the ping of the client and Discord\'s API')
-        .setDMPermission(false)
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
-    async execute(interaction: ChatInputCommandInteraction) {
+export default class Ping implements BotInteraction {
+    constructor(private client: BotClient) {}
+
+    static builders = [
+        new SlashCommandBuilder()
+            .setName('ping')
+            .setDescription('Gets the ping of the client and Discord\'s API')
+            .setDMPermission(false)
+            .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+    ];
+
+    async executeChat(interaction: ChatInputCommandInteraction) {
         const ping = {
-            client: interaction.client.ws.ping,
+            client: this.client.ws.ping,
             discord: lastDiscordAPIPing.ping,
         };
 
@@ -42,5 +48,5 @@ export default {
             `Discord API ping: \`${discordPingText}\``;
 
         await interaction.reply(response);
-    },
-} as BotInteraction;
+    }
+}

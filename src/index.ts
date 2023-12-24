@@ -35,7 +35,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 
     if (interaction.isChatInputCommand()) {
         try {
-            await botInteraction.execute(interaction);
+            await botInteraction.executeChat?.(interaction);
         } catch (err) {
             console.error(err);
             if (interaction.replied || interaction.deferred) {
@@ -50,13 +50,13 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
             return;
         }
         try {
-            await botInteraction.autocomplete(interaction);
+            await botInteraction.autocomplete?.(interaction);
         } catch (err) {
             console.error(err);
         }
     } else if (interaction.isMessageContextMenuCommand()) {
         try {
-            await botInteraction.execute(interaction);
+            await botInteraction.executeContextMenu?.(interaction);
         } catch (err) {
             console.error(err);
             if (interaction.replied || interaction.deferred) {

@@ -2,6 +2,7 @@ import { REST, Routes } from 'discord.js';
 import config from './config.toml';
 import path from 'node:path';
 import { listFiles } from './src/utils';
+import { BotInteraction } from './src/classes/BotInteraction';
 
 const rest = new REST({ version: '10' }).setToken(config.token);
 
@@ -9,19 +10,13 @@ try {
     console.info('Refreshing application interactions...');
 
     const interactionPaths = listFiles(path.join(import.meta.dir, 'src/interactions'), true);
-    
+
     const interactions = [];
 
     for (const file of interactionPaths) {
-        const interaction = (await import(file)).default;
+        const InteractionClass = (await import(file)).default as typeof BotInteraction;
 
-        // if interaction is not a BotInteraction, warn and skip
-        if (!('data' in interaction) || !('execute' in interaction)) {
-            console.warn(`Interaction file ${file} is not a BotInteraction`);
-            continue;
-        }
-
-        interactions.push(interaction.data.toJSON());
+        interactions.push(...InteractionClass.builders.map(builder => builder.toJSON()));
     }
 
     if (Bun.argv.includes('--clear')) {

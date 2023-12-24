@@ -19,19 +19,21 @@ export class BotClient extends Client {
         const interactionPaths = listFiles(path.join(import.meta.dir, '../interactions'), true);
 
         for (const file of interactionPaths) {
-            const interaction = (await import(file)).default as BotInteraction;
+            const InteractionClass = (await import(file)).default as typeof BotInteraction;
 
-            // if interaction is not a BotInteraction, warn and skip
-            if (!('data' in interaction) || !('execute' in interaction)) {
-                console.warn(`Interaction file ${file} is not a BotInteraction`);
+            let interaction: BotInteraction;
+            try {
+                interaction = new InteractionClass(this);
+            } catch (err) {
+                console.warn(`File ${file} is not a BotInteraction`);
                 continue;
             }
 
-            if (typeof interaction.init === 'function') {
-                await interaction.init(this);
-            }
+            interaction.init?.();
 
-            this.interactions.set(interaction.data.name, interaction);
+            for (const builder of InteractionClass.builders) {
+                this.interactions.set(builder.name, interaction);
+            }
         }
     }
 
