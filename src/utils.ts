@@ -1,7 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { BotInteraction } from './classes/BotInteraction';
 
+/**
+ * Lists all files in the given directory
+ * @param dir The directory to list files from
+ * @param includeExactPath Whether to include the exact path of the file or not
+ * @param fileList The list of files to append to
+ * @returns The list of files
+ */
 export function listFiles(dir: string, includeExactPath = false, fileList: string[] = []): string[] {
     const files = fs.readdirSync(dir);
 
@@ -23,28 +29,6 @@ export function listFiles(dir: string, includeExactPath = false, fileList: strin
     return fileList;
 }
 
-export async function getInteractions(dir: string): Promise<BotInteraction[]> {
-    const files = listFiles(dir);
-
-    const interactionPaths = files.map(file => path.join(import.meta.dir, file));
-
-    const interactions: BotInteraction[] = [];
-
-    for (const file of interactionPaths) {
-        const interaction = (await import(file)).default;
-
-        // if interaction is not a BotInteraction, warn and skip
-        if (!('data' in interaction) || !('execute' in interaction)) {
-            console.warn(`File ${file} is not a BotInteraction`);
-            continue;
-        }
-
-        interactions.push(interaction.data.toJSON());
-    }
-
-    return interactions;
-}
-
 /**
  * Parses the given Discord message URL or ID and returns the message ID
  * @param input The Discord message URL or ID
@@ -60,4 +44,15 @@ export function parseMessageInput(input: string) {
     const path = url.pathname;
     const split = path.split('/');
     return split[split.length - 1];
+}
+
+/**
+ * Parses the given Discord emoji string
+ * @param input The Discord emoji string
+ * @returns The emoji name, ID, and whether it's animated
+ */
+export function parseEmojiString(input: string): { name: string; id: string; animated: boolean; } {
+    const match = input.match(/<(?<animated>a)?:(?<name>\w+):(?<id>\d+)>/)!;
+    const { name, id, animated } = match.groups!;
+    return { name, id, animated: !!animated };
 }
