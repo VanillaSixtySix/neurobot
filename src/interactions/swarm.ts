@@ -1,4 +1,4 @@
-import { Message, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { Message } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
@@ -10,14 +10,6 @@ interface GuildState {
 
 export default class Swarm implements BotInteraction {
     constructor(private client: BotClient) {}
-
-    static builders = [
-        new SlashCommandBuilder()
-            .setName('ping')
-            .setDescription('Gets the ping of the client and Discord\'s API')
-            .setDMPermission(false)
-            .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
-    ];
 
     guildStates: Map<string, GuildState> = new Map();
 
