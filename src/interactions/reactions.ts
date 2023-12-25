@@ -109,6 +109,7 @@ export default class Reactions implements BotInteraction {
         new ContextMenuCommandBuilder()
             .setName('Log First Reactions')
             .setType(ApplicationCommandType.Message)
+            .setDMPermission(false)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
     ];
 
