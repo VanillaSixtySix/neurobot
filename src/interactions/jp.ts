@@ -37,7 +37,7 @@ export default class JP implements BotInteraction {
         // This is done because discord.js' MessageUpdate isn't fired if the message isn't cached
         this.client.on('raw', async (packet: RawPacket<RawPacketMessageUpdateData>) => {
             if (packet.t !== 'MESSAGE_UPDATE') return;
-            if (packet.d.author.bot) return;
+            if (packet.d.author?.bot) return;
             if (!packet.d.guild_id) return;
             if (packet.d.channel_id !== config.interactions.jp.targetChannel) return;
 
