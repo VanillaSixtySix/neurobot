@@ -39,11 +39,11 @@ export default class JP implements BotInteraction {
             if (packet.t !== 'MESSAGE_UPDATE') return;
             if (packet.d.author.bot) return;
             if (!packet.d.guild_id) return;
-            if (packet.d.channel_id !== config.interactions.jp.targetChannel) return;
+            if (packet.d.channel_id !== config.interactions.utility.jp.targetChannel) return;
 
-            let targetChannel = this.client.channels.cache.get(config.interactions.jp.translationTargetChannel) as TextChannel;
+            let targetChannel = this.client.channels.cache.get(config.interactions.utility.jp.translationTargetChannel) as TextChannel;
             if (!targetChannel) {
-                targetChannel = await this.client.channels.fetch(config.interactions.jp.translationTargetChannel) as TextChannel;
+                targetChannel = await this.client.channels.fetch(config.interactions.utility.jp.translationTargetChannel) as TextChannel;
             }
 
             const toTranslate = packet.d.content;
@@ -86,11 +86,11 @@ export default class JP implements BotInteraction {
     async onMessageCreate(message: Message) {
         if (message.author.bot) return;
         if (!message.guild) return;
-        if (message.channelId !== config.interactions.jp.targetChannel) return;
+        if (message.channelId !== config.interactions.utility.jp.targetChannel) return;
 
-        let targetChannel = this.client.channels.cache.get(config.interactions.jp.translationTargetChannel) as TextChannel;
+        let targetChannel = this.client.channels.cache.get(config.interactions.utility.jp.translationTargetChannel) as TextChannel;
         if (!targetChannel) {
-            targetChannel = await this.client.channels.fetch(config.interactions.jp.translationTargetChannel) as TextChannel;
+            targetChannel = await this.client.channels.fetch(config.interactions.utility.jp.translationTargetChannel) as TextChannel;
         }
 
         const toTranslate = message.content;
@@ -133,7 +133,7 @@ export default class JP implements BotInteraction {
             body,
             method: 'POST',
             headers: {
-                Authorization: 'DeepL-Auth-Key ' + config.interactions.jp.deeplAPIKey,
+                Authorization: 'DeepL-Auth-Key ' + config.interactions.utility.jp.deeplAPIKey,
                 'Content-Type': 'application/json',
                 'Content-Length': body.length.toString(),
             }

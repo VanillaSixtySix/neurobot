@@ -5,10 +5,13 @@ guildId = ""
 [interactions.utility.info]
 logChannel = ""
 
-[interactions.swarm]
-targetChannel = ""
-
-[interactions.jp]
+[interactions.utility.jp]
 targetChannel = ""
 translationTargetChannel = ""
 deeplAPIKey = ""
+
+[interactions.utility.pendingrole]
+role = ""
+
+[interactions.swarm]
+targetChannel = ""
