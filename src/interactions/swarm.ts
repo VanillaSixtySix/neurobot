@@ -46,7 +46,6 @@ export default class Swarm implements BotInteraction {
                 id: sticker.id,
             };
         }
-        console.debug(message.guild.id, guildState);
         this.guildStates.set(message.guild.id, guildState);
     }
 }
