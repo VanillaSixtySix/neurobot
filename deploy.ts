@@ -16,7 +16,7 @@ try {
     for (const file of interactionPaths) {
         const InteractionClass = (await import(file)).default as typeof BotInteraction;
 
-        interactions.push(...InteractionClass.builders.map(builder => builder.toJSON()));
+        interactions.push(...(InteractionClass.builders || []).map(builder => builder.toJSON()));
     }
 
     if (Bun.argv.includes('--clear')) {

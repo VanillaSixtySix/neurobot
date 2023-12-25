@@ -7,7 +7,6 @@ import { listFiles } from '../utils';
 export class BotClient extends Client {
     interactions: Collection<string, BotInteraction>;
     db: Database;
-
     constructor(options: ClientOptions, db: Database) {
         super(options);
 
@@ -33,7 +32,7 @@ export class BotClient extends Client {
 
             console.debug(`Loaded interaction ${InteractionClass.name}`);
 
-            for (const builder of InteractionClass.builders) {
+            for (const builder of InteractionClass.builders ?? [{ name: InteractionClass.name + '-nobuilders' }]) {
                 this.interactions.set(builder.name, interaction);
             }
         }

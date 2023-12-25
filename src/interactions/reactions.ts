@@ -1,13 +1,8 @@
 import { ApplicationCommandType, AutocompleteInteraction, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Events, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, TextChannel } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import { parseEmojiString, parseMessageInput } from '../utils';
+import { RawPacket, parseEmojiString, parseMessageInput } from '../utils';
 import config from '../../config.toml';
-
-interface RawPacket<T> {
-    t: string;
-    d: T;
-}
 
 interface RawPacketReactionData {
     /** The ID of the user who owns/owned the reaction */

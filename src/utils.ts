@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
+export interface RawPacket<T> {
+    t: string;
+    d: T;
+}
+
 /**
  * Lists all files in the given directory
  * @param dir The directory to list files from

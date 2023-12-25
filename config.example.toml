@@ -4,3 +4,11 @@ guildId = ""
 
 [interactions.utility.info]
 logChannel = ""
+
+[interactions.swarm]
+targetChannel = ""
+
+[interactions.jp]
+targetChannel = ""
+translationTargetChannel = ""
+deeplAPIKey = ""
