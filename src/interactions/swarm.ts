@@ -1,4 +1,4 @@
-import { Message } from 'discord.js';
+import { Events, Message } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
@@ -11,9 +11,14 @@ interface GuildState {
 export default class Swarm implements BotInteraction {
     constructor(private client: BotClient) {}
 
+    async init() {
+        this.client.on(Events.MessageCreate, message => this.onMessageCreate(message));
+    }
+
     guildStates: Map<string, GuildState> = new Map();
 
     async onMessageCreate(message: Message) {
+        if (message.author.bot) return;
         if (!message.guild) return;
         if (message.channelId !== config.interactions.swarm.targetChannel) return;
         if (message.stickers.size === 0) return;

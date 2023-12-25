@@ -69,30 +69,6 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     }
 });
 
-client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot) return;
-
-    for (const interaction of client.interactions.values()) {
-        try {
-            await interaction.onMessageCreate?.(message);
-        } catch (err) {
-            console.error(err);
-        }
-    }
-});
-
-client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
-    if (newMessage.author?.bot ?? true) return;
-
-    for (const interaction of client.interactions.values()) {
-        try {
-            await interaction.onMessageUpdate?.(oldMessage, newMessage);
-        } catch (err) {
-            console.error(err);
-        }
-    }
-});
-
 client.login(config.token);
 
 process.on('SIGINT', async () => {

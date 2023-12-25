@@ -1,4 +1,4 @@
-import { EmbedBuilder, EmbedData, Message, TextChannel } from 'discord.js';
+import { EmbedBuilder, EmbedData, Events, Message, TextChannel } from 'discord.js';
 import { BotInteraction } from '../../classes/BotInteraction';
 import { BotClient } from '../../classes/BotClient';
 import config from '../../../config.toml';
@@ -10,6 +10,9 @@ interface RawPacketMessageUpdateData {
     guild_id: string;
     edited_timestamp: string;
     content: string;
+    author: {
+        bot?: boolean;
+    }
 }
 
 interface DBTranslation {
@@ -29,9 +32,12 @@ export default class JP implements BotInteraction {
             )
         `);
 
+        this.client.on(Events.MessageCreate, message => this.onMessageCreate(message));
+
         // This is done because discord.js' MessageUpdate isn't fired if the message isn't cached
         this.client.on('raw', async (packet: RawPacket<RawPacketMessageUpdateData>) => {
             if (packet.t !== 'MESSAGE_UPDATE') return;
+            if (packet.d.author.bot) return;
             if (!packet.d.guild_id) return;
             if (packet.d.channel_id !== config.interactions.jp.targetChannel) return;
 
@@ -78,6 +84,7 @@ export default class JP implements BotInteraction {
     }
 
     async onMessageCreate(message: Message) {
+        if (message.author.bot) return;
         if (!message.guild) return;
         if (message.channelId !== config.interactions.jp.targetChannel) return;
 
@@ -87,7 +94,10 @@ export default class JP implements BotInteraction {
         }
 
         const toTranslate = message.content;
+        // Don't translate if the message is empty (file upload?)
         if (toTranslate.length === 0) return;
+        // Don't translate if the message is only emojis
+        if (/^(<a?:\w+:\d+> *)+$/.test(toTranslate)) return;
 
         const translation = await this.translate(toTranslate);
 
@@ -106,48 +116,6 @@ export default class JP implements BotInteraction {
         const insertStmt = this.client.db.query('INSERT INTO jp_translations VALUES (?, ?)');
         insertStmt.run(message.id, translationMessage.id);
     }
-
-    // async onMessageUpdate(oldMessage: Message, newMessage: Message) {
-    //     if (!newMessage.guild) return;
-    //     if (newMessage.channelId !== config.interactions.jp.targetChannel) return;
-
-    //     let targetChannel = this.client.channels.cache.get(config.interactions.jp.translationTargetChannel) as TextChannel;
-    //     if (!targetChannel) {
-    //         targetChannel = await this.client.channels.fetch(config.interactions.jp.translationTargetChannel) as TextChannel;
-    //     }
-
-    //     const toTranslate = newMessage.content;
-    //     if (toTranslate.length === 0) return;
-
-    //     const translation = await this.translate(toTranslate);
-
-    //     const selectStmt = this.client.db.query('SELECT translated_message_id FROM jp_translations WHERE message_id = ?');
-    //     const translatedMessageId = selectStmt.get(newMessage.id) as DBTranslation | undefined;
-
-    //     if (!translatedMessageId) return;
-
-    //     const translationMessage = targetChannel.messages.resolve(translatedMessageId.translated_message_id);
-    //     if (!translationMessage) return;
-
-    //     const embedData = translationMessage.embeds[0] as EmbedData;
-
-    //     let editCount = 0;
-    //     if (embedData.footer) {
-    //         editCount = parseInt(embedData.footer.text.split(' ')[1].replace('x', ''));
-    //     }
-    //     let embed = new EmbedBuilder()
-    //         .setColor(0xAA8ED6)
-    //         .setAuthor({ name: newMessage.author.tag, iconURL: newMessage.author.displayAvatarURL() })
-    //         .setDescription(`via DeepL | [Jump to message](${newMessage.url})`)
-    //         .setFields([
-    //             { name: ' ', value: newMessage.content },
-    //             { name: 'Translation', value: translation },
-    //         ])
-    //         .setFooter({ text: `Edited ${editCount + 1}x` })
-    //         .setTimestamp(newMessage.editedTimestamp);
-
-    //     await translationMessage.edit({ embeds: [embed] });
-    // }
 
     /**
      * Translates the given input from Japanese to English using DeepL.

@@ -10,7 +10,4 @@ export class BotInteraction {
     onAutocomplete?(interaction: AutocompleteInteraction): Promise<void>;
     onChatInteraction?(interaction: ChatInputCommandInteraction): Promise<void>;
     onContextMenuInteraction?(interaction: ContextMenuCommandInteraction): Promise<void>;
-
-    onMessageCreate?(message: Message): Promise<void>;
-    onMessageUpdate?(oldMessage: Message | PartialMessage, newMessage: Message | PartialMessage): Promise<void>;
 }

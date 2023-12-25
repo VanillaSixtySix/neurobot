@@ -13,7 +13,7 @@ interface RawPacketReactionData {
     emoji: {
         name: string;
         id: string;
-        animated: boolean | undefined;
+        animated?: boolean;
     };
 }
 
