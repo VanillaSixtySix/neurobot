@@ -2,15 +2,15 @@ token = ""
 clientId = ""
 guildId = ""
 
-[interactions.utility.info]
+[interactions.info]
 logChannel = ""
 
-[interactions.utility.jp]
+[interactions.jp]
 targetChannel = ""
 translationTargetChannel = ""
 deeplAPIKey = ""
 
-[interactions.utility.pendingrole]
+[interactions.pendingrole]
 role = ""
 
 [interactions.swarm]

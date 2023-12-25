@@ -1,7 +1,7 @@
 import { ApplicationCommandType, ContextMenuCommandBuilder, EmbedBuilder, MessageContextMenuCommandInteraction, PermissionFlagsBits } from 'discord.js';
-import { BotInteraction } from '../../classes/BotInteraction';
-import config from '../../../config.toml';
-import { BotClient } from '../../classes/BotClient';
+import { BotInteraction } from '../classes/BotInteraction';
+import config from '../../config.toml';
+import { BotClient } from '../classes/BotClient';
 
 export default class Info implements BotInteraction {
     constructor(private client: BotClient) {}
@@ -14,7 +14,7 @@ export default class Info implements BotInteraction {
     ];
 
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
-        const interactionConfig = config.interactions.utility.info;
+        const interactionConfig = config.interactions.info;
 
         const message = interaction.targetMessage;
         const createdTimestamp = Math.floor(message.createdTimestamp / 1000);

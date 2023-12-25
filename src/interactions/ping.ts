@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
-import { BotInteraction } from '../../classes/BotInteraction';
-import { BotClient } from '../../classes/BotClient';
+import { BotInteraction } from '../classes/BotInteraction';
+import { BotClient } from '../classes/BotClient';
 
 const lastDiscordAPIPing = {
     timestamp: -1,

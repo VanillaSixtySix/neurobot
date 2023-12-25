@@ -327,7 +327,7 @@ export default class Reactions implements BotInteraction {
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
         if (!interaction.inGuild()) return;
 
-        const interactionConfig = config.interactions.utility.info;
+        const interactionConfig = config.interactions.info;
 
         const message = interaction.targetMessage;
 

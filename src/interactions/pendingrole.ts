@@ -1,7 +1,7 @@
 import { Message, GuildMember, VoiceState, PartialGuildMember } from 'discord.js';
-import { BotInteraction } from '../../classes/BotInteraction';
-import { BotClient } from '../../classes/BotClient';
-import config from '../../../config.toml';
+import { BotInteraction } from '../classes/BotInteraction';
+import { BotClient } from '../classes/BotClient';
+import config from '../../config.toml';
 
 export default class PendingRole implements BotInteraction {
     constructor(private client: BotClient) {}
@@ -29,7 +29,7 @@ export default class PendingRole implements BotInteraction {
     }
 
     async givePendingRole(member: GuildMember, type: string = 'generic') {
-        const pendingRoleId = config.interactions.utility.pendingrole.role;
+        const pendingRoleId = config.interactions.pendingrole.role;
         if (!pendingRoleId) return;
 
         const role = member.guild.roles.cache.get(pendingRoleId);
