@@ -46,10 +46,6 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
             }
         }
     } else if (interaction.isAutocomplete()) {
-        if (!('autocomplete' in botInteraction)) {
-            console.error(`Command ${interaction.commandName} does not support autocomplete`);
-            return;
-        }
         try {
             await botInteraction.onAutocomplete?.(interaction);
         } catch (err) {
