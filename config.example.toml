@@ -4,6 +4,10 @@ guildId = ""
 
 [interactions.info]
 logChannel = ""
+saveAttachments = false
+# Absolute path
+attachmentDir = ""
+attachmentBaseURL = ""
 
 [interactions.jp]
 targetChannel = ""
