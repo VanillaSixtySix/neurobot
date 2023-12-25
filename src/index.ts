@@ -11,6 +11,7 @@ const client = new BotClient({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.MessageContent,
     ],
     allowedMentions: {
         parse: [],
@@ -35,7 +36,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 
     if (interaction.isChatInputCommand()) {
         try {
-            await botInteraction.executeChat?.(interaction);
+            await botInteraction.onChatInteraction?.(interaction);
         } catch (err) {
             console.error(err);
             if (interaction.replied || interaction.deferred) {
@@ -50,13 +51,13 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
             return;
         }
         try {
-            await botInteraction.autocomplete?.(interaction);
+            await botInteraction.onAutocomplete?.(interaction);
         } catch (err) {
             console.error(err);
         }
     } else if (interaction.isMessageContextMenuCommand()) {
         try {
-            await botInteraction.executeContextMenu?.(interaction);
+            await botInteraction.onContextMenuInteraction?.(interaction);
         } catch (err) {
             console.error(err);
             if (interaction.replied || interaction.deferred) {
@@ -64,6 +65,18 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
             } else {
                 await interaction.reply({ content: 'An error occurred executing this interaction.', ephemeral: true });
             }
+        }
+    }
+});
+
+client.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot) return;
+
+    for (const interaction of client.interactions.values()) {
+        try {
+            await interaction.onMessageCreate?.(message);
+        } catch (err) {
+            console.error(err);
         }
     }
 });

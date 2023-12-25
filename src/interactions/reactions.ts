@@ -184,7 +184,7 @@ export default class Reactions implements BotInteraction {
         });
     }
 
-    async autocomplete(interaction: AutocompleteInteraction) {
+    async onAutocomplete(interaction: AutocompleteInteraction) {
         const subCommand = interaction.options.getSubcommand();
 
         let options: { name: string; value: string; }[] = [];
@@ -212,7 +212,7 @@ export default class Reactions implements BotInteraction {
         await interaction.respond(options);
     }
 
-    async executeChat(interaction: ChatInputCommandInteraction) {
+    async onChatInteraction(interaction: ChatInputCommandInteraction) {
         if (!interaction.inGuild()) return;
 
         let reloadCache = false;
@@ -329,7 +329,7 @@ export default class Reactions implements BotInteraction {
         }
     }
 
-    async executeContextMenu(interaction: MessageContextMenuCommandInteraction) {
+    async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
         if (!interaction.inGuild()) return;
 
         const interactionConfig = config.interactions.utility.info;

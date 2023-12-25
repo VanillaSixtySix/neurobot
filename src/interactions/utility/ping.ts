@@ -24,7 +24,7 @@ export default class Ping implements BotInteraction {
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
     ];
 
-    async executeChat(interaction: ChatInputCommandInteraction) {
+    async onChatInteraction(interaction: ChatInputCommandInteraction) {
         const ping = {
             client: this.client.ws.ping,
             discord: lastDiscordAPIPing.ping,

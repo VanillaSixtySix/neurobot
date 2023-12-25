@@ -13,7 +13,7 @@ export default class Info implements BotInteraction {
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
     ];
 
-    async executeContextMenu(interaction: MessageContextMenuCommandInteraction) {
+    async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
         const interactionConfig = config.interactions.utility.info;
 
         const message = interaction.targetMessage;

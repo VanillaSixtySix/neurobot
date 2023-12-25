@@ -31,6 +31,8 @@ export class BotClient extends Client {
 
             interaction.init?.();
 
+            console.debug(`Loaded interaction ${InteractionClass.name}`);
+
             for (const builder of InteractionClass.builders) {
                 this.interactions.set(builder.name, interaction);
             }
