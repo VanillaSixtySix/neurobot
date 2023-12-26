@@ -1,4 +1,4 @@
-import { Message, GuildMember, VoiceState, PartialGuildMember } from 'discord.js';
+import { Message, GuildMember, VoiceState, PartialGuildMember, Role } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
@@ -32,10 +32,13 @@ export default class PendingRole implements BotInteraction {
         const pendingRoleId = config.interactions.pendingrole.role;
         if (!pendingRoleId) return;
 
-        const role = member.guild.roles.cache.get(pendingRoleId);
+        let role: Role | null | undefined = member.guild.roles.cache.get(pendingRoleId);
         if (!role) {
-            console.error(`Pending role ${pendingRoleId} does not exist`);
-            return;
+            role = await member.guild.roles.fetch(pendingRoleId);
+            if (!role) {
+                console.error(`Pending role ${pendingRoleId} does not exist`);
+                return;
+            }
         }
 
         if (member.roles.cache.has(pendingRoleId)) return;
