@@ -19,3 +19,9 @@ role = ""
 
 [interactions.swarm]
 targetChannel = ""
+
+[interactions.twitch]
+authKey = ""
+# vedal987: 85498365
+pollUser = "85498365"
+pollResultsChannel = ""
