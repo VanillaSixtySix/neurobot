@@ -121,8 +121,11 @@ export default class Twitch implements BotInteraction {
             return;
         }
 
+        const duration = Math.ceil(poll.duration_seconds / 60);
+
         const embed = new EmbedBuilder()
             .setColor(0xAA8ED6)
+            .setDescription(`Duration: ${duration} minute${duration === 1 ? '' : 's'}`)
             .setTitle(poll.title)
             .setTimestamp(new Date(poll.ended_at))
             .addFields(...poll.choices.map(choice => {
