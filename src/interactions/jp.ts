@@ -9,7 +9,7 @@ interface RawPacketMessageUpdateData {
     channel_id: string;
     guild_id: string;
     edited_timestamp: string;
-    content: string;
+    content: string | undefined;
     author: {
         bot?: boolean;
     }
@@ -40,6 +40,7 @@ export default class JP implements BotInteraction {
             if (packet.d.author?.bot) return;
             if (!packet.d.guild_id) return;
             if (packet.d.channel_id !== config.interactions.jp.targetChannel) return;
+            if (typeof packet.d.content === 'undefined') return;
 
             let targetChannel = this.client.channels.cache.get(config.interactions.jp.translationTargetChannel) as TextChannel;
             if (!targetChannel) {
