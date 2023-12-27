@@ -261,8 +261,8 @@ export default class Reactions implements BotInteraction {
                 //     if so, edit the message
                 //     otherwise, send a new message and store the ID
                 // unfortunately, this is prone to desync because we aren't fetching the message
-                const reactionsStmt = this.client.db.query('SELECT message_id, reactor_id, added FROM reactions WHERE guild_id = ? AND message_id = ? ORDER BY timestamp ASC');
-                const reactionsDBRes = reactionsStmt.all(packet.d.guild_id, packet.d.message_id) as { message_id: string; reactor_id: string; added: 0 | 1; }[];
+                const reactionsStmt = this.client.db.query('SELECT message_id, reactor_id, added FROM reactions WHERE guild_id = ? AND message_id = ? AND emoji LIKE ? ORDER BY timestamp ASC');
+                const reactionsDBRes = reactionsStmt.all(packet.d.guild_id, packet.d.message_id, `%${formedName}%`) as { message_id: string; reactor_id: string; added: 0 | 1; }[];
                 const reduced = reactionsDBRes.reduce((acc, res) => {
                     if (res.added === 1) {
                         acc[res.reactor_id] = (acc[res.reactor_id] ?? 0) + 1;
@@ -273,8 +273,8 @@ export default class Reactions implements BotInteraction {
                 }, {} as { [id: string]: number; });
                 const reactionCount = Object.values(reduced).reduce((acc, val) => acc + val, 0);
 
-                const notificationsStmt = this.client.db.query('SELECT notification_message_id FROM reaction_notifications WHERE guild_id = ? AND message_id = ?');
-                const notificationsDBRes = notificationsStmt.get(packet.d.guild_id, packet.d.message_id) as { notification_message_id: string; };
+                const notificationsStmt = this.client.db.query('SELECT notification_message_id FROM reaction_notifications WHERE guild_id = ? AND message_id = ? AND emoji LIKE ?');
+                const notificationsDBRes = notificationsStmt.get(packet.d.guild_id, packet.d.message_id, `%${formedName}%`) as { notification_message_id: string; };
                 // if notificationsDBRes is null, send a new message, otherwise edit with id
 
                 const threshold = notificationGroup!.threshold;
