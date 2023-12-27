@@ -326,7 +326,7 @@ export default class Reactions implements BotInteraction {
                         });
                     } else {
                         // send message
-                        const notificationMessage = await originalChannel.send({ content, embeds: [embed] });
+                        const notificationMessage = await destinationChannel.send({ content, embeds: [embed] });
 
                         const insertStmt = this.client.db.query('INSERT INTO reaction_notifications VALUES (?, ?, ?, ?)');
                         insertStmt.run(packet.d.guild_id, formedName, packet.d.message_id, notificationMessage.id);
