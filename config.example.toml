@@ -17,6 +17,9 @@ deeplAPIKey = ""
 [interactions.pendingrole]
 role = ""
 
+[interactions.reactions]
+notificationChannel = ""
+
 [interactions.swarm]
 targetChannel = ""
 

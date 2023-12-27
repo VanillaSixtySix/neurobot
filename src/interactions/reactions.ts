@@ -34,6 +34,12 @@ interface DBReactionBan {
     enabled: 0 | 1;
 }
 
+interface DBReactionNotificationGroup {
+    guild_id: string;
+    emoji: string;
+    threshold: number;
+}
+
 export default class Reactions implements BotInteraction {
     constructor(private client: BotClient) {}
 
@@ -105,6 +111,45 @@ export default class Reactions implements BotInteraction {
                             .setAutocomplete(true)
                             .setRequired(true)
                     )
+            )
+            .addSubcommandGroup(subCommandGroup =>
+                subCommandGroup
+                    .setName('notify')
+                    .setDescription('Notification settings for reactions')
+                    .addSubcommand(subCommand =>
+                        subCommand
+                            .setName('add')
+                            .setDescription('Adds a notification for a reaction')
+                            .addStringOption(option =>
+                                option
+                                    .setName('emoji')
+                                    .setDescription('The emoji name or ID to notify for - MAKE IT SPECIFIC!')
+                                    .setRequired(true)
+                            )
+                            .addIntegerOption(option =>
+                                option
+                                    .setName('threshold')
+                                    .setDescription('The threshold for the notification')
+                                    .setRequired(true)
+                            )
+                    )
+                    .addSubcommand(subCommand =>
+                        subCommand
+                            .setName('remove')
+                            .setDescription('Removes a notification for a reaction')
+                            .addStringOption(option =>
+                                option
+                                    .setName('emoji')
+                                    .setDescription('The emoji name or ID to remove')
+                                    .setRequired(true)
+                                    .setAutocomplete(true)
+                            )
+                    )
+                    .addSubcommand(subCommand =>
+                        subCommand
+                            .setName('list')
+                            .setDescription('Lists all notification groups')
+                    )
             ),
         new ContextMenuCommandBuilder()
             .setName('Log First Reactions')
@@ -114,6 +159,9 @@ export default class Reactions implements BotInteraction {
     ];
 
     reactionBanCache: Map<string, DBReactionBan[]> = new Map();
+    reactionNotificationGroupCache: Map<string, { emoji: string; threshold: number; }[]> = new Map();
+
+    editQueue: (() => Promise<void>)[] = [];
 
     async init() {
         this.client.db.exec(`
@@ -136,6 +184,23 @@ export default class Reactions implements BotInteraction {
                 UNIQUE(guild_id, emoji)
             )
         `);
+        this.client.db.exec(`
+            CREATE TABLE IF NOT EXISTS reaction_notification_groups (
+                guild_id TEXT NOT NULL,
+                emoji TEXT NOT NULL,
+                threshold INTEGER NOT NULL,
+                UNIQUE(guild_id, emoji)
+            )
+        `);
+        this.client.db.exec(`
+            CREATE TABLE IF NOT EXISTS reaction_notifications (
+                guild_id TEXT NOT NULL,
+                emoji TEXT NOT NULL,
+                message_id TEXT NOT NULL,
+                notification_message_id TEXT NOT NULL,
+                UNIQUE(guild_id, emoji, message_id)
+            )
+        `);
 
         // Fill reaction ban cache
         const bans = this.client.db.query('SELECT * FROM reaction_bans').all() as DBReactionBan[];
@@ -144,6 +209,15 @@ export default class Reactions implements BotInteraction {
                 this.reactionBanCache.set(ban.guild_id, []);
             }
             this.reactionBanCache.get(ban.guild_id)!.push(ban);
+        }
+
+        // Fill reaction notification cache
+        const notificationGroups = this.client.db.query('SELECT * FROM reaction_notification_groups').all() as DBReactionNotificationGroup[];
+        for (const notificationGroup of notificationGroups) {
+            if (!this.reactionNotificationGroupCache.has(notificationGroup.guild_id)) {
+                this.reactionNotificationGroupCache.set(notificationGroup.guild_id, []);
+            }
+            this.reactionNotificationGroupCache.get(notificationGroup.guild_id)!.push(notificationGroup);
         }
 
         this.client.on(Events.Raw, async (packet: RawPacket<RawPacketReactionData>) => {
@@ -160,28 +234,118 @@ export default class Reactions implements BotInteraction {
                 const regex = new RegExp(ban.emoji, 'gi');
                 return regex.test(formedName) && ban.enabled === 1;
             });
-            if (!banned) return;
+            const notificationGroup = this.reactionNotificationGroupCache.get(packet.d.guild_id)?.find(notification => {
+                const regex = new RegExp(notification.emoji, 'gi');
+                return regex.test(formedName);
+            });
+            if (banned) {
+                let channel = this.client.channels.cache.get(packet.d.channel_id) as TextChannel;
+                if (!channel) {
+                    channel = await this.client.channels.fetch(packet.d.channel_id) as TextChannel;
+                }
 
-            let channel = this.client.channels.cache.get(packet.d.channel_id) as TextChannel;
-            if (!channel) {
-                channel = await this.client.channels.fetch(packet.d.channel_id) as TextChannel;
+                let message = channel.messages.cache.get(packet.d.message_id);
+                if (!message) {
+                    message = await channel.messages.fetch(packet.d.message_id);
+                    if (!message) return;
+                }
+
+                const user = await this.client.users.fetch(packet.d.user_id);
+                if (!user) return;
+
+                await message.reactions.resolve(packet.d.emoji.id || packet.d.emoji.name)?.users.remove(packet.d.user_id);
+            } else if (typeof notificationGroup !== 'undefined') {
+                // a notification group matches the reacted emoji, so:
+                // 1. see if the reactions for this message meet the threshold
+                // 2. see if a notification message was already sent
+                //     if so, edit the message
+                //     otherwise, send a new message and store the ID
+                // unfortunately, this is prone to desync because we aren't fetching the message
+                const reactionsStmt = this.client.db.query('SELECT message_id, reactor_id, added FROM reactions WHERE guild_id = ? AND message_id = ? ORDER BY timestamp ASC');
+                const reactionsDBRes = reactionsStmt.all(packet.d.guild_id, packet.d.message_id) as { message_id: string; reactor_id: string; added: 0 | 1; }[];
+                const reduced = reactionsDBRes.reduce((acc, res) => {
+                    if (res.added === 1) {
+                        acc[res.reactor_id] = (acc[res.reactor_id] ?? 0) + 1;
+                    } else {
+                        acc[res.reactor_id] = (acc[res.reactor_id] ?? 0) - 1;
+                    }
+                    return acc;
+                }, {} as { [id: string]: number; });
+                const reactionCount = Object.values(reduced).reduce((acc, val) => acc + val, 0);
+
+                const notificationsStmt = this.client.db.query('SELECT notification_message_id FROM reaction_notifications WHERE guild_id = ? AND message_id = ?');
+                const notificationsDBRes = notificationsStmt.get(packet.d.guild_id, packet.d.message_id) as { notification_message_id: string; };
+                // if notificationsDBRes is null, send a new message, otherwise edit with id
+
+                const threshold = notificationGroup!.threshold;
+
+                if (reactionCount >= threshold) {
+                    let originalChannel = this.client.channels.cache.get(packet.d.channel_id) as TextChannel;
+                    if (!originalChannel) {
+                        originalChannel = await this.client.channels.fetch(packet.d.channel_id) as TextChannel;
+                        if (!originalChannel) return;
+                    }
+
+                    let originalMessage = originalChannel.messages.cache.get(packet.d.message_id);
+                    if (!originalMessage) {
+                        originalMessage = await originalChannel.messages.fetch(packet.d.message_id);
+                        if (!originalMessage) return;
+                    }
+
+                    const destinationChannelId = config.interactions.reactions.notificationChannel;
+                    let destinationChannel = this.client.channels.cache.get(destinationChannelId) as TextChannel;
+                    if (!destinationChannel) {
+                        destinationChannel = await this.client.channels.fetch(destinationChannelId) as TextChannel;
+                        if (!destinationChannel) {
+                            console.warn(`Reaction notification destination ${destinationChannelId} not found`);
+                            return;
+                        }
+                    }
+
+                    const content = `Reaction notification threshold reached; [Jump to message](${originalMessage.url})`;
+
+                    const reactionImage = formedName.startsWith('<') ? `https://cdn.discordapp.com/emojis/${packet.d.emoji.id}.${packet.d.emoji.animated ? 'gif' : 'png'}` : undefined;
+
+                    const embed = new EmbedBuilder()
+                        .setColor(0xAA8ED6)
+                        .setAuthor({ name: `${originalMessage.author.tag} (${originalMessage.author.id})`, iconURL: originalMessage.author.displayAvatarURL() })
+                        .setDescription(originalMessage.content || '*(No content)*')
+                        .setFooter({ text: `${!reactionImage ? formedName + ' — ': ''}${reactionCount}/${threshold}`, iconURL: reactionImage });
+
+                    if (notificationsDBRes) {
+                        // edit message
+                        this.editQueue.push(async () => {
+                            // TODO: this is now in the queue - what if destinationChannel was deleted before it's processed?
+                            let notificationMessage = destinationChannel.messages.cache.get(notificationsDBRes.notification_message_id);
+                            if (!notificationMessage) {
+                                notificationMessage = await destinationChannel.messages.fetch(notificationsDBRes.notification_message_id);
+                                // if message wasn't found, but it's in the db, maybe it was deleted? just ignore
+                                if (!notificationMessage) return;
+                            }
+                            await notificationMessage.edit({ content, embeds: [embed] });
+                        });
+                    } else {
+                        // send message
+                        const notificationMessage = await originalChannel.send({ content, embeds: [embed] });
+
+                        const insertStmt = this.client.db.query('INSERT INTO reaction_notifications VALUES (?, ?, ?, ?)');
+                        insertStmt.run(packet.d.guild_id, formedName, packet.d.message_id, notificationMessage.id);
+                    }
+                }
             }
-
-            let message = channel.messages.cache.get(packet.d.message_id);
-            if (!message) {
-                message = await channel.messages.fetch(packet.d.message_id);
-                if (!message) return;
-            }
-
-            const user = await this.client.users.fetch(packet.d.user_id);
-            if (!user) return;
-
-            await message.reactions.resolve(packet.d.emoji.id || packet.d.emoji.name)?.users.remove(packet.d.user_id);
         });
+
+        // process notification edits
+        setInterval(() => {
+            if (this.editQueue.length === 0) return;
+            const func = this.editQueue.shift()!;
+            func();
+        }, 1000);
     }
 
     async onAutocomplete(interaction: AutocompleteInteraction) {
         const subCommand = interaction.options.getSubcommand();
+        const subCommandGroup = interaction.options.getSubcommandGroup();
 
         let options: { name: string; value: string; }[] = [];
 
@@ -204,6 +368,17 @@ export default class Reactions implements BotInteraction {
                 name: res.emoji,
                 value: res.emoji.toString(),
             }));
+        } else if (subCommandGroup === 'notify') {
+            if (subCommand === 'remove') {
+                const emoji = interaction.options.getString('emoji', true);
+                const stmt = this.client.db.query('SELECT * FROM reaction_notification_groups WHERE guild_id = ? AND emoji LIKE ?');
+                const dbRes = stmt.all(interaction.guildId, `%${emoji}%`) as DBReactionNotificationGroup[];
+
+                options = dbRes.map(res => ({
+                    name: res.emoji,
+                    value: res.emoji.toString(),
+                }));
+            }
         }
         await interaction.respond(options);
     }
@@ -211,9 +386,10 @@ export default class Reactions implements BotInteraction {
     async onChatInteraction(interaction: ChatInputCommandInteraction) {
         if (!interaction.inGuild()) return;
 
-        let reloadCache = false;
+        let reloadCaches = false;
 
         const subCommand = interaction.options.getSubcommand();
+        const subCommandGroup = interaction.options.getSubcommandGroup();
         if (subCommand === 'first') {
             const messageInput = interaction.options.getString('message', true);
             const messageId = parseMessageInput(messageInput);
@@ -233,7 +409,7 @@ export default class Reactions implements BotInteraction {
 
             const insertStmt = this.client.db.query('INSERT INTO reaction_bans (guild_id, emoji) VALUES (?, ?)');
             insertStmt.run(interaction.guildId, emoji);
-            reloadCache = true;
+            reloadCaches = true;
 
             await interaction.reply(`Ban created for emoji \`${emoji}\`.`);
         } else if (subCommand === 'unban') {
@@ -248,7 +424,7 @@ export default class Reactions implements BotInteraction {
 
             const deleteStmt = this.client.db.query('DELETE FROM reaction_bans WHERE guild_id = ? AND emoji = ?');
             deleteStmt.run(interaction.guildId, emoji);
-            reloadCache = true;
+            reloadCaches = true;
 
             await interaction.reply(`Ban for emoji \`${emoji}\` removed.`);
         } else if (subCommand === 'listbans') {
@@ -295,7 +471,7 @@ export default class Reactions implements BotInteraction {
 
             const updateStmt = this.client.db.query('UPDATE reaction_bans SET enabled = 1 WHERE guild_id = ? AND emoji = ?');
             updateStmt.run(interaction.guildId, emoji);
-            reloadCache = true;
+            reloadCaches = true;
 
             await interaction.reply('Ban enabled.');
         } else if (subCommand === 'disableban') {
@@ -310,18 +486,45 @@ export default class Reactions implements BotInteraction {
 
             const updateStmt = this.client.db.query('UPDATE reaction_bans SET enabled = 0 WHERE guild_id = ? AND emoji = ?');
             updateStmt.run(interaction.guildId, emoji);
-            reloadCache = true;
+            reloadCaches = true;
 
             await interaction.reply('Ban disabled.');
-        } else if (subCommand === 'reloadbans') {
-            // Reload bans
-            reloadCache = true;
+        } else if (subCommandGroup === 'notify') {
+            if (subCommand === 'add') {
+                const emoji = interaction.options.getString('emoji', true);
+                const threshold = interaction.options.getInteger('threshold', true);
 
-            await interaction.reply('Bans reloaded.');
+                const insertStmt = this.client.db.query('INSERT INTO reaction_notification_groups VALUES (?, ?, ?)');
+                insertStmt.run(interaction.guildId, emoji, threshold);
+                reloadCaches = true;
+
+                await interaction.reply(`Notification added for \`${emoji}\` at threshold \`${threshold}\`.`);
+            } else if (subCommand === 'remove') {
+                const emoji = interaction.options.getString('emoji', true);
+
+                const deleteStmt = this.client.db.query('DELETE FROM reaction_notification_groups WHERE guild_id = ? AND emoji = ?');
+                deleteStmt.run(interaction.guildId, emoji);
+                reloadCaches = true;
+
+                await interaction.reply(`Notification removed for \`${emoji}\`.`);
+            } else if (subCommand === 'list') {
+                const selectStmt = this.client.db.query('SELECT * FROM reaction_notification_groups WHERE guild_id = ?');
+                const dbRes = selectStmt.all(interaction.guildId) as { emoji: string; threshold: number; }[];
+
+                const chunks = dbRes.map(res => `- \`${res.emoji}\` at threshold \`${res.threshold}\``);
+
+                const embed = new EmbedBuilder()
+                    .setColor(0xAA8ED6)
+                    .setTitle('Reaction Notifications')
+                    .setDescription(chunks.length > 0 ? chunks.join('\n') : 'None');
+
+                await interaction.reply({ embeds: [embed] });
+            }
         }
 
-        if (reloadCache) {
+        if (reloadCaches) {
             this.reloadBanCache(interaction.guildId);
+            this.reloadNotificationCache(interaction.guildId);
         }
     }
 
@@ -467,5 +670,15 @@ export default class Reactions implements BotInteraction {
         const stmt = this.client.db.query('SELECT * FROM reaction_bans WHERE guild_id = ?');
         const bans = stmt.all(guildId) as DBReactionBan[];
         this.reactionBanCache.set(guildId, bans);
+    }
+
+    /**
+     * Reloads the reaction notification cache for the given guild
+     * @param guildId The guild ID
+     */
+    private reloadNotificationCache(guildId: string) {
+        const stmt = this.client.db.query('SELECT * FROM reaction_notification_groups WHERE guild_id = ?');
+        const notifications = stmt.all(guildId) as DBReactionNotificationGroup[];
+        this.reactionNotificationGroupCache.set(guildId, notifications);
     }
 }
