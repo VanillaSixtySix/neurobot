@@ -2,6 +2,9 @@ token = ""
 clientId = ""
 guildId = ""
 
+[interactions.embedban]
+role = ""
+
 [interactions.info]
 logChannel = ""
 saveAttachments = false
