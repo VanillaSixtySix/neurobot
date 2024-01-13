@@ -32,6 +32,11 @@ export default class PendingRole implements BotInteraction {
         const pendingRoleId = config.interactions.pendingrole.role;
         if (!pendingRoleId) return;
 
+        if (member == null) {
+            console.error(`[interaction/${type}] member is null`);
+            return;
+        }
+
         let role: Role | null | undefined = member.guild.roles.cache.get(pendingRoleId);
         if (!role) {
             role = await member.guild.roles.fetch(pendingRoleId);
