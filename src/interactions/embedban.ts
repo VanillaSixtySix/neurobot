@@ -48,6 +48,7 @@ export default class EmbedBan implements BotInteraction {
             await interaction.reply('Could not find user by username or ID');
             return;
         }
+        member = await member.fetch();
         if (member.roles.cache.has(embedBanRoleId)) {
             await member.roles.remove(role, `[interaction/embedban] User unbanned from using embeds`);
             await interaction.reply(`Removed embed ban role for ${member}.`);
