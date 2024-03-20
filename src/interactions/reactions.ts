@@ -3,6 +3,7 @@ import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { RawPacket, parseEmojiString, parseMessageInput } from '../utils';
 import config from '../../config.toml';
+import { Statement } from 'bun:sqlite';
 
 interface RawPacketReactionData {
     /** The ID of the user who owns/owned the reaction */
@@ -435,11 +436,16 @@ export default class Reactions implements BotInteraction {
                 return;
             }
 
-            const insertStmt = this.client.db.query(`INSERT INTO reaction_bans (guild_id, emoji, channel_ids) VALUES (?, ?, ?)`);
-            insertStmt.run(interaction.guildId, emoji, channelIds);
+            if (channelIds) {
+                const insertStmt = this.client.db.query(`INSERT INTO reaction_bans (guild_id, emoji, channel_ids) VALUES (?, ?, ?)`);
+                insertStmt.run(interaction.guildId, emoji, channelIds);
+            } else {
+                const insertStmt = this.client.db.query(`INSERT INTO reaction_bans (guild_id, emoji) VALUES (?, ?)`);
+                insertStmt.run(interaction.guildId, emoji);
+            }
             reloadCaches = true;
 
-            await interaction.reply(`Ban created for emoji \`${emoji}\`${channelIds ?? ' in channel IDs `' + channelIds + '`'}.`);
+            await interaction.reply(`Ban created for emoji \`${emoji}\`${channelIds ? ' in channel IDs `' + channelIds + '`' : ''}.`);
         } else if (subCommand === 'unban') {
             // Verify ban exists and delete from reaction_bans
             const emoji = interaction.options.getString('emoji', true);
@@ -451,11 +457,17 @@ export default class Reactions implements BotInteraction {
                 return;
             }
 
-            const deleteStmt = this.client.db.query(`DELETE FROM reaction_bans WHERE guild_id = ? AND emoji = ? AND channel_ids = ?`);
-            deleteStmt.run(interaction.guildId, emoji, channelIds);
+            let deleteStmt: Statement;
+            if (channelIds) {
+                deleteStmt = this.client.db.query(`DELETE FROM reaction_bans WHERE guild_id = ? AND emoji = ? AND channel_ids = ?`);
+                deleteStmt.run(interaction.guildId, emoji, channelIds);
+            } else {
+                deleteStmt = this.client.db.query(`DELETE FROM reaction_bans WHERE guild_id = ? AND emoji = ? AND channel_ids IS NULL`);
+                deleteStmt.run(interaction.guildId, emoji);
+            }
             reloadCaches = true;
 
-            await interaction.reply(`Ban for emoji \`${emoji}\` removed${channelIds ?? ' from channel IDs `' + channelIds + '`'}.`);
+            await interaction.reply(`Ban for emoji \`${emoji}\` removed${channelIds ? ' from channel IDs `' + channelIds + '`' : ''}.`);
         } else if (subCommand === 'listbans') {
             // List all bans
             const selectStmt = this.client.db.query('SELECT * FROM reaction_bans WHERE guild_id = ? ORDER BY id ASC');
@@ -499,8 +511,13 @@ export default class Reactions implements BotInteraction {
                 return;
             }
 
-            const updateStmt = this.client.db.query(`UPDATE reaction_bans SET enabled = 1 WHERE guild_id = ? AND emoji = ? AND channel_ids = ?`);
-            updateStmt.run(interaction.guildId, emoji, channelIds);
+            if (channelIds) {
+                const updateStmt = this.client.db.query(`UPDATE reaction_bans SET enabled = 1 WHERE guild_id = ? AND emoji = ? AND channel_ids = ?`);
+                updateStmt.run(interaction.guildId, emoji, channelIds);
+            } else {
+                const updateStmt = this.client.db.query(`UPDATE reaction_bans SET enabled = 1 WHERE guild_id = ? AND emoji = ? AND channel_ids IS NULL`);
+                updateStmt.run(interaction.guildId, emoji);
+            }
             reloadCaches = true;
 
             await interaction.reply('Ban enabled.');
@@ -515,8 +532,13 @@ export default class Reactions implements BotInteraction {
                 return;
             }
 
-            const updateStmt = this.client.db.query(`UPDATE reaction_bans SET enabled = 0 WHERE guild_id = ? AND emoji = ? AND channel_ids = ?`);
-            updateStmt.run(interaction.guildId, emoji, channelIds);
+            if (channelIds) {
+                const updateStmt = this.client.db.query(`UPDATE reaction_bans SET enabled = 0 WHERE guild_id = ? AND emoji = ? AND channel_ids = ?`);
+                updateStmt.run(interaction.guildId, emoji, channelIds);
+            } else {
+                const updateStmt = this.client.db.query(`UPDATE reaction_bans SET enabled = 0 WHERE guild_id = ? AND emoji = ? AND channel_ids IS NULL`);
+                updateStmt.run(interaction.guildId, emoji);
+            }
             reloadCaches = true;
 
             await interaction.reply('Ban disabled.');
@@ -689,8 +711,16 @@ export default class Reactions implements BotInteraction {
      * @returns Whether the reaction ban exists
      */
     private emojiBanExists(guildId: string, emoji: string, channelIds: string | null): boolean {
-        const stmt = this.client.db.query(`SELECT 1 FROM reaction_bans WHERE guild_id = ? AND emoji = ? AND channel_ids = ?`);
-        const res = stmt.get(guildId, emoji, channelIds) as 1 | null;
+        // TODO: clean up
+        let stmt: Statement;
+        let res: 1 | null;
+        if (channelIds) {
+            stmt = this.client.db.query(`SELECT 1 FROM reaction_bans WHERE guild_id = ? AND emoji = ? AND channel_ids = ?`);
+            res = stmt.get(guildId, emoji, channelIds) as 1 | null;
+        } else {
+            stmt = this.client.db.query(`SELECT 1 FROM reaction_bans WHERE guild_id = ? AND emoji = ?`);
+            res = stmt.get(guildId, emoji) as 1 | null;
+        }
         return !!res;
     }
 
