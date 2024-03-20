@@ -2,6 +2,8 @@ import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder }
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 
+export const beingReassigned: string[] = [];
+
 export default class ReassignRole implements BotInteraction {
 	constructor(private client: BotClient) {}
 
@@ -45,9 +47,11 @@ export default class ReassignRole implements BotInteraction {
 		for (const member of members.values()) {
 			const memberRoles = member.roles.cache.filter(role => roleIds.includes(role.id));
 			if (memberRoles.size === 0) continue;
+			beingReassigned.push(member.id);
 			await member.roles.remove(memberRoles, `[interaction/reassignrole] Reassigning roles`);
 			// @ts-ignore
 			await member.roles.add(memberRoles, `[interaction/reassignrole] Reassigning roles`);
+			beingReassigned.splice(beingReassigned.indexOf(member.id), 1);
 			reassignedCount++;
 		}
 
