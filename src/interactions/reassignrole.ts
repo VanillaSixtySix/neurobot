@@ -1,11 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { Readable } from 'stream';
-import { finished } from 'stream/promises';
-import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import config from '../../config.toml';
 
 export default class ReassignRole implements BotInteraction {
 	constructor(private client: BotClient) {}
