@@ -260,7 +260,7 @@ export default class Reactions implements BotInteraction {
 
             const banned = this.reactionBanCache.get(packet.d.guild_id)?.some(ban => {
                 const regex = new RegExp(ban.emoji, 'gi');
-                return regex.test(formedName) && ban.enabled === 1 && (!ban.channel_ids || ban.channel_ids.split(',').includes(packet.d.channel_id));
+                return regex.test(formedName) && ban.enabled === 1 && (ban.channel_ids ? ban.channel_ids.split(',').includes(packet.d.channel_id) : true);
             });
             const notificationGroup = this.reactionNotificationGroupCache.get(packet.d.guild_id)?.find(notification => {
                 const regex = new RegExp(notification.emoji, 'gi');
