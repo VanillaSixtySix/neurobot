@@ -3,11 +3,10 @@
   "module": "src/index.ts",
   "type": "module",
   "devDependencies": {
-    "@types/bun": "^1.0.11",
-    "bun-types": "latest"
+    "@types/bun": "^1.0.12"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.4.1"
   },
   "dependencies": {
     "discord.js": "^14.14.1"
