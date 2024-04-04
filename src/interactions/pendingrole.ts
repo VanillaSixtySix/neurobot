@@ -8,7 +8,22 @@ import { beingReassigned } from './reassignrole.ts';
 export default class PendingRole implements BotInteraction {
     constructor(private client: BotClient) {}
 
+    pendingRole: Role | null = null;
+
     async init() {
+        const guild = this.client.guilds.cache.get(config.guildId)!;
+        if (!guild) return;
+        const pendingRoleId = config.interactions.pendingrole.role;
+        if (!pendingRoleId) return;
+        this.pendingRole = guild.roles.cache.get(pendingRoleId)!;
+        if (!this.pendingRole) {
+            this.pendingRole = await guild.roles.fetch(pendingRoleId);
+            if (!this.pendingRole) {
+                console.error(`Pending role ${pendingRoleId} does not exist`);
+                return;
+            }
+        }
+
         this.client.on('messageCreate', message => this.onMessageCreate(message));
         this.client.on('guildMemberUpdate', (oldMember, newMember) => this.onMemberUpdate(oldMember, newMember));
         this.client.on('voiceStateUpdate', (oldState, newState) => this.onVoiceStateUpdate(oldState, newState));
@@ -32,24 +47,12 @@ export default class PendingRole implements BotInteraction {
     }
 
     async givePendingRole(member: GuildMember, type: string = 'generic') {
-        const pendingRoleId = config.interactions.pendingrole.role;
-        if (!pendingRoleId) return;
-
         if (member == null) {
             console.error(`[interaction/${type}] member is null`);
             return;
         }
 
-        let role: Role | null | undefined = member.guild.roles.cache.get(pendingRoleId);
-        if (!role) {
-            role = await member.guild.roles.fetch(pendingRoleId);
-            if (!role) {
-                console.error(`Pending role ${pendingRoleId} does not exist`);
-                return;
-            }
-        }
-
-        if (member.roles.cache.has(pendingRoleId)) return;
-        await member.roles.add(role, `[interaction/${type}] User no longer pending rule verification`);
+        if (member.roles.cache.has(this.pendingRole!.id)) return;
+        await member.roles.add(this.pendingRole!, `[interaction/${type}] User no longer pending rule verification`);
     }
 }
