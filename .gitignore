@@ -175,5 +175,8 @@ dist
 .DS_Store
 
 # Neurobot
-config.toml
+config*.toml
+!config.example.toml
 neurobot.db
+# Quick single-file bot testing
+/test.ts

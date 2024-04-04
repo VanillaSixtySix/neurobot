@@ -20,6 +20,10 @@ deeplAPIKey = ""
 [interactions.pendingrole]
 role = ""
 
+[interactions.qol.minecraftFix]
+subRole = ""
+minecraftRole = ""
+
 [interactions.reactions]
 notificationChannel = ""
 
