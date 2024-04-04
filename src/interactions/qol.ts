@@ -5,8 +5,6 @@ import config from '../../config.toml';
 export default class QOL implements BotInteraction {
     constructor(private client: BotClient) {}
 
-    static builders = [];
-
     async init() {
         await this.initMinecraftFix();
     }
