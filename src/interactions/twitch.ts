@@ -79,6 +79,7 @@ export default class Twitch implements BotInteraction {
         this.ws.addEventListener('message', event => this.onMessage(event));
         this.ws.addEventListener('close', event => this.onClose(event));
         this.ws.addEventListener('error', event => this.onError(event));
+        this.totalCloses = 0;
     }
 
     onOpen(event: Event) {
@@ -147,7 +148,10 @@ export default class Twitch implements BotInteraction {
 
     onClose(event: CloseEvent) {
         console.info('Twitch WebSocket closed');
-        console.debug(event);
+        if (event.code !== 1006) {
+            console.error(event);
+            return;
+        }
         this.totalCloses++;
         if (this.totalCloses > 5) {
             console.error('Twitch WebSocket closed too many times');
