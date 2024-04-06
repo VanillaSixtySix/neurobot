@@ -1,7 +1,7 @@
+import { AutoModerationActionType, GuildTextBasedChannel } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
-import { AutoModerationActionType, GuildTextBasedChannel } from 'discord.js';
 
 export default class QOL implements BotInteraction {
     constructor(private client: BotClient) {}
@@ -21,6 +21,7 @@ export default class QOL implements BotInteraction {
         const minecraftRole = guild.roles.cache.get(qolConfig.minecraftRole)!;
         if (!minecraftRole) return;
         this.client.on('guildMemberUpdate', async (oldMember, newMember) => {
+            if (newMember.guild.id !== config.guildId) return;
             if (newMember.roles.cache.has(minecraftRole.id) && !newMember.roles.cache.has(subRole.id)) {
                 await newMember.roles.remove(minecraftRole, '[qol] User does not have subscriber role');
             }
@@ -34,6 +35,7 @@ export default class QOL implements BotInteraction {
         if (emote === '') return;
         if (threshold === 0) return;
         this.client.on('messageCreate', async message => {
+            if (message.guildId !== config.guildId)
             if (message.author.bot) return;
             if (message.content.length >= threshold) {
                 await message.react(emote);
@@ -45,6 +47,7 @@ export default class QOL implements BotInteraction {
         const qolConfig = config.interactions.qol.autoMod;
         if (!qolConfig.sendFlagAttachments) return;
         this.client.on('autoModerationActionExecution', async execution => {
+            if (execution.guild.id !== config.guildId) return;
             if (execution.action.type !== AutoModerationActionType.SendAlertMessage) return;
             if (execution.channel == null) return;
             if (execution.messageId == null) return;

@@ -30,18 +30,21 @@ export default class PendingRole implements BotInteraction {
     }
 
     async onMessageCreate(message: Message) {
+        if (message.guildId !== config.guildId) return;
         if (message.author.bot) return;
         if (!message.inGuild()) return;
         await this.givePendingRole(message.member!, 'message');
     }
 
     async onMemberUpdate(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) {
+        if (newMember.guild.id !== config.guildId) return;
         if (newMember.user.bot) return;
         if (beingReassigned.includes(newMember.id)) return;
         await this.givePendingRole(newMember, 'member update');
     }
 
     async onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState) {
+        if (newState.guild.id !== config.guildId) return;
         if (newState.member?.user.bot) return;
         await this.givePendingRole(newState.member!, 'voice');
     }
