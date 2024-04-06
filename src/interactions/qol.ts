@@ -28,10 +28,12 @@ export default class QOL implements BotInteraction {
     async initEssaying() {
         const qolConfig = config.interactions.qol.essaying;
         const emote = qolConfig.emote;
+        const threshold = qolConfig.threshold;
         if (emote === '') return;
+        if (threshold === 0) return;
         this.client.on('messageCreate', async message => {
             if (message.author.bot) return;
-            if (message.content.length >= qolConfig.threshold) {
+            if (message.content.length >= threshold) {
                 await message.react(emote);
             }
         });
