@@ -102,13 +102,13 @@ export default class Info implements BotInteraction {
 
             const globalAvatarEmbed = new EmbedBuilder()
                 .setTitle('Global Avatar')
-                .setImage(user.avatarURL());
+                .setImage(user.avatarURL({ size: 4096 }));
             embeds.push(globalAvatarEmbed);
 
             if (member != null) {
                 const serverAvatarEmbed = new EmbedBuilder()
                     .setTitle('Server Avatar');
-                const avatar = member.avatarURL();
+                const avatar = member.avatarURL({ size: 4096 });
                 if (avatar != null) {
                     serverAvatarEmbed.setImage(avatar);
                     embeds.push(serverAvatarEmbed);
