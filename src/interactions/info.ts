@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'stream';
-import { finished } from 'stream/promises';
-import { ApplicationCommandType, ContextMenuCommandBuilder, EmbedBuilder, MessageContextMenuCommandInteraction, PermissionFlagsBits } from 'discord.js';
+import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GuildMember, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
+import { parseDiscordUserInput } from '../utils';
 
 export default class Info implements BotInteraction {
     constructor(private client: BotClient) {}
@@ -15,6 +15,17 @@ export default class Info implements BotInteraction {
             .setName('Log Information')
             .setType(ApplicationCommandType.Message)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+        new SlashCommandBuilder()
+            .setName('avatar')
+            .setDescription('Displays the user\'s global and server avatars')
+            .setDMPermission(false)
+            .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+            .addStringOption(option =>
+                option
+                    .setName('user')
+                    .setDescription('The user\'s username or ID')
+                    .setRequired(true)
+            )
     ];
 
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
@@ -75,5 +86,37 @@ export default class Info implements BotInteraction {
         await outChannel.send({ content, embeds: [embed] });
 
         await interaction.reply({ content: `Message information sent to ${outChannel}`, ephemeral: true });
+    }
+
+    async onChatInteraction(interaction: ChatInputCommandInteraction) {
+        if (interaction.commandName === 'avatar') {
+            const userInput = interaction.options.getString('user');
+            const user = await parseDiscordUserInput(this.client, userInput!);
+            if (user == null) {
+                await interaction.reply('Could not find user by username or ID');
+                return;
+            }
+            const member = await interaction.guild?.members.fetch(user);
+
+            const embeds = [];
+
+            const globalAvatarEmbed = new EmbedBuilder()
+                .setTitle('Global Avatar')
+                .setImage(user.avatarURL());
+            embeds.push(globalAvatarEmbed);
+
+            if (member != null) {
+                const serverAvatarEmbed = new EmbedBuilder()
+                    .setTitle('Server Avatar');
+                const avatar = member.avatarURL();
+                if (avatar != null) {
+                    serverAvatarEmbed.setImage(avatar);
+                    embeds.push(serverAvatarEmbed);
+                }
+            }
+            const hasServerAvatar = embeds.length > 1 ? '✅' : '❌';
+            const content = `✅ Global Avatar; ${hasServerAvatar} Server Avatar`;
+            interaction.reply({ content, embeds });
+        }
     }
 }
