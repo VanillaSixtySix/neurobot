@@ -2,6 +2,7 @@ import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, 
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
+import { parseDiscordUserInput } from '../utils';
 
 export default class EmbedBan implements BotInteraction {
     constructor(private client: BotClient) {}
@@ -35,20 +36,16 @@ export default class EmbedBan implements BotInteraction {
         }
 
         const userInput = interaction.options.getString('user');
-        // match with this regex: (?:<@)?(\d{17,})(?:>)?
-        const idMatch = userInput?.match(/(?:<@)?(\d{17,})(?:>)?/);
-        let member: GuildMember | undefined = undefined;
-        if (idMatch == null) {
-            // assume it's a username
-            member = interaction.guild!.members.cache.find(member => member.user.username === userInput);
-        } else {
-            member = await interaction.guild!.members.fetch(idMatch[1]);
+        const user = await parseDiscordUserInput(this.client, userInput!);
+        if (user == null) {
+            await interaction.reply('Could not find user by username or ID');
+            return;
         }
+        const member = await interaction.guild?.members.fetch(user);
         if (member == null) {
             await interaction.reply('Could not find user by username or ID');
             return;
         }
-        member = await member.fetch();
         if (member.roles.cache.has(embedBanRoleId)) {
             await member.roles.remove(role, `[interaction/embedban] User unbanned from using embeds`);
             await interaction.reply(`Removed embed ban role for ${member}.`);

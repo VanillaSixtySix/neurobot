@@ -1,3 +1,4 @@
+import { Client, User } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -60,4 +61,23 @@ export function parseEmojiString(input: string): { name: string; id: string; ani
     const match = input.match(/<(?<animated>a)?:(?<name>\w+):(?<id>\d+)>/)!;
     const { name, id, animated } = match.groups!;
     return { name, id, animated: !!animated };
+}
+
+/**
+ * Parses the given Discord username or ID as a User
+ * @param input The Discord username or ID
+ * @returns The found user
+ */
+export async function parseDiscordUserInput(client: Client, input: string) {
+    input = input.trim();
+    // match with this regex: (?:<@)?(\d{17,})(?:>)?
+    const idMatch = input?.match(/(?:<@)?(\d{17,})(?:>)?/);
+    let user: User | undefined = undefined;
+    if (idMatch == null) {
+        // assume it's a username
+        user = client.users.cache.find(cachedUser => cachedUser.username === input);
+    } else {
+        user = await client.users.fetch(idMatch[1]);
+    }
+    return user;
 }
