@@ -1,11 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { Readable } from 'stream';
-import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GuildMember, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
-import { parseDiscordUserInput } from '../utils';
+import { parseDiscordUserInput, saveMessageAttachments } from '../utils';
 
 export default class Info implements BotInteraction {
     constructor(private client: BotClient) {}
@@ -46,33 +43,22 @@ export default class Info implements BotInteraction {
         }
 
         if (message.attachments.size > 0) {
-            let attachmentFiles: string[] = [];
-            if (config.interactions.info.saveAttachments) {
-                const attachmentDir = config.interactions.info.attachmentDir;
-                const attachmentBaseURL = config.interactions.info.attachmentBaseURL.replace(/\/$/, '');
-
-                fs.mkdirSync(attachmentDir, { recursive: true });
-
-                for (const attachment of message.attachments.values()) {
-                    const originalFilename = new URL(attachment.url).pathname.split('/').pop()!;
-                    const newName = `${message.id}-${originalFilename}`;
-                    const attachmentPath = path.join(attachmentDir, newName);
-
-                    const attachmentRes = await fetch(attachment.url);
-
-                    const stream = fs.createWriteStream(attachmentPath, { flags: 'w' });
-                    Readable.fromWeb(attachmentRes.body!).pipe(stream);
-
-                    const attachmentURL = attachmentBaseURL + '/' + newName;
-
-                    attachmentFiles.push(`[${originalFilename}](${attachmentURL})`);
-                }
+            if (interactionConfig.saveAttachments) {
+                const savedAttachments = await saveMessageAttachments(message);
+                embed.addFields({
+                    name: 'Attachments',
+                    value: savedAttachments
+                        .map(attachment => `[${attachment.name}](${attachment.url})`)
+                        .join('\n')
+                });
+            } else {
+                embed.addFields({
+                    name: 'Attachments',
+                    value: message.attachments
+                        .map(attachment => `[${attachment.name}](${attachment.url})`)
+                        .join('\n')
+                })
             }
-
-            if (attachmentFiles.length === 0) {
-                attachmentFiles = [...message.attachments.values()].map(attachment => `[${attachment.name}](${attachment.url})`);
-            }
-            embed.addFields({ name: 'Attachment', value: attachmentFiles.join('\n') });
         }
 
         const outChannel = await message.client.channels.fetch(interactionConfig.logChannel);

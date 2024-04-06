@@ -1,6 +1,8 @@
-import { Client, User } from 'discord.js';
+import { Client, Message, User } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
+import { Readable } from 'stream';
+import config from '../config.toml';
 
 export interface RawPacket<T> {
     t: string;
@@ -80,4 +82,50 @@ export async function parseDiscordUserInput(client: Client, input: string) {
         user = await client.users.fetch(idMatch[1]);
     }
     return user;
+}
+
+export interface MessageAttachment {
+    name: string;
+    url: string;
+}
+
+/**
+ * Locally saves attachments for the given message
+ * @param message The message to save the attachments of
+ * @returns A list of objects with the attachment file name and URL
+ */
+export async function saveMessageAttachments(message: Message): Promise<MessageAttachment[]> {
+    let attachmentFiles: MessageAttachment[] = [];
+
+    const attachmentDir = config.attachments.outDir;
+    const attachmentBaseURL = config.attachments.baseURL.replace(/\/$/, '');
+
+    fs.mkdirSync(attachmentDir, { recursive: true });
+
+    for (const attachment of message.attachments.values()) {
+        const originalFilename = new URL(attachment.url).pathname.split('/').pop()!;
+        const newName = `${message.id}-${originalFilename}`;
+        const attachmentPath = path.join(attachmentDir, newName);
+
+        const attachmentRes = await fetch(attachment.url);
+
+        const stream = fs.createWriteStream(attachmentPath, { flags: 'w' });
+        Readable.fromWeb(attachmentRes.body!).pipe(stream);
+
+        const attachmentURL = attachmentBaseURL + '/' + newName;
+
+        attachmentFiles.push({
+            name: originalFilename,
+            url: attachmentURL
+        });
+    }
+
+    if (attachmentFiles.length === 0) {
+        attachmentFiles = [...message.attachments.values()].map(attachment => ({
+            name: attachment.name,
+            url: attachment.url
+        }));
+    }
+
+    return attachmentFiles;
 }

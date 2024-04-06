@@ -1,6 +1,7 @@
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
+import { AutoModerationActionType, GuildTextBasedChannel } from 'discord.js';
 
 export default class QOL implements BotInteraction {
     constructor(private client: BotClient) {}
@@ -8,6 +9,7 @@ export default class QOL implements BotInteraction {
     async init() {
         await this.initEssaying();
         await this.initMinecraftFix();
+        await this.initAutoModAttachments();
     }
 
     async initMinecraftFix() {
@@ -36,6 +38,41 @@ export default class QOL implements BotInteraction {
             if (message.content.length >= threshold) {
                 await message.react(emote);
             }
+        });
+    }
+
+    async initAutoModAttachments() {
+        const qolConfig = config.interactions.qol.autoMod;
+        if (!qolConfig.sendFlagAttachments) return;
+        this.client.on('autoModerationActionExecution', async execution => {
+            if (execution.action.type !== AutoModerationActionType.SendAlertMessage) return;
+            if (execution.channel == null) return;
+            if (execution.messageId == null) return;
+            if (execution.alertSystemMessageId == null) return;
+            const message = await execution.channel.messages.fetch(execution.messageId);
+            if (message == null) return;
+            if (message.attachments.size === 0) return;
+            let rule = execution.guild.autoModerationRules.cache.get(execution.ruleId);
+            if (rule == null) {
+                rule = await execution.guild.autoModerationRules.fetch(execution.ruleId);
+                if (rule == null) return;
+            }
+            const alertChannelId = execution.autoModerationRule?.actions
+                .find(action => action.metadata.channelId != null)?.metadata.channelId;
+            if (alertChannelId == null) return;
+            let alertChannel = execution.guild.channels.cache.get(alertChannelId) as GuildTextBasedChannel | undefined;
+            if (alertChannel == null) {
+                alertChannel = await execution.guild.channels.fetch(alertChannelId) as GuildTextBasedChannel | undefined;
+                if (alertChannel == null) return;
+            }
+            const alertMessage = await alertChannel.messages.fetch(execution.alertSystemMessageId);
+            if (alertMessage == null) return;
+            await alertMessage.reply({
+                files: message.attachments.map(attachment => ({
+                    name: attachment.name,
+                    attachment: attachment.url
+                }))
+            });
         });
     }
 }

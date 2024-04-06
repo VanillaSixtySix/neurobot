@@ -2,15 +2,18 @@ token = ""
 clientId = ""
 guildId = ""
 
+[attachments]
+save = true
+# Absolute path
+outDir = ""
+baseURL = ""
+
 [interactions.embedban]
 role = ""
 
 [interactions.info]
 logChannel = ""
 saveAttachments = false
-# Absolute path
-attachmentDir = ""
-attachmentBaseURL = ""
 
 [interactions.jp]
 targetChannel = ""
@@ -19,6 +22,9 @@ deeplAPIKey = ""
 
 [interactions.pendingrole]
 role = ""
+
+[interactions.qol.automod]
+sendFlagAttachments = true
 
 [interactions.qol.essaying]
 emote = ""
