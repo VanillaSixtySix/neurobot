@@ -20,6 +20,9 @@ deeplAPIKey = ""
 [interactions.pendingrole]
 role = ""
 
+[interactions.qol.essaying]
+emote = ""
+
 [interactions.qol.minecraftFix]
 subRole = ""
 minecraftRole = ""

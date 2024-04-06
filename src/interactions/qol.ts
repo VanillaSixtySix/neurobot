@@ -6,6 +6,7 @@ export default class QOL implements BotInteraction {
     constructor(private client: BotClient) {}
 
     async init() {
+        await this.initEssaying();
         await this.initMinecraftFix();
     }
 
@@ -20,6 +21,18 @@ export default class QOL implements BotInteraction {
         this.client.on('guildMemberUpdate', async (oldMember, newMember) => {
             if (newMember.roles.cache.has(minecraftRole.id) && !newMember.roles.cache.has(subRole.id)) {
                 await newMember.roles.remove(minecraftRole, '[qol] User does not have subscriber role');
+            }
+        });
+    }
+
+    async initEssaying() {
+        const qolConfig = config.interactions.qol;
+        const emote = qolConfig.essaying.emote;
+        if (emote === '') return;
+        this.client.on('messageCreate', async message => {
+            if (message.author.bot) return;
+            if (message.content.length >= 600) {
+                await message.react(emote);
             }
         });
     }
