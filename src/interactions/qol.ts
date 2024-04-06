@@ -11,7 +11,7 @@ export default class QOL implements BotInteraction {
     }
 
     async initMinecraftFix() {
-        const qolConfig = config.interactions.qol;
+        const qolConfig = config.interactions.qol.minecraftFix;
         const guild = this.client.guilds.cache.get(config.guildId)!;
         if (!guild) return;
         const subRole = guild.roles.cache.get(qolConfig.subRole)!;
@@ -26,12 +26,12 @@ export default class QOL implements BotInteraction {
     }
 
     async initEssaying() {
-        const qolConfig = config.interactions.qol;
-        const emote = qolConfig.essaying.emote;
+        const qolConfig = config.interactions.qol.essaying;
+        const emote = qolConfig.emote;
         if (emote === '') return;
         this.client.on('messageCreate', async message => {
             if (message.author.bot) return;
-            if (message.content.length >= 600) {
+            if (message.content.length >= qolConfig.threshold) {
                 await message.react(emote);
             }
         });
