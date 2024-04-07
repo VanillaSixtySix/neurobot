@@ -1,4 +1,4 @@
-import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
@@ -29,37 +29,7 @@ export default class Info implements BotInteraction {
         const interactionConfig = config.interactions.info;
 
         const message = interaction.targetMessage;
-        const createdTimestamp = Math.floor(message.createdTimestamp / 1000);
-
-        let embed = new EmbedBuilder()
-            .setColor(0xAA8ED6)
-            .setAuthor({ name: `${message.author.tag} (${message.author.id})`, iconURL: message.author.displayAvatarURL() })
-            .setDescription(message.content || '*(No content)*')
-            .addFields({ name: 'Timestamp', value: `<t:${createdTimestamp}:d> <t:${createdTimestamp}:T>` });
-
-        if (message.editedTimestamp != null) {
-            const editedTimestamp = message.editedTimestamp != null ? Math.floor(message.editedTimestamp / 1000) : null;
-            embed.addFields({ name: 'Edited', value: `<t:${editedTimestamp}:d> <t:${editedTimestamp}:T>` });
-        }
-
-        if (message.attachments.size > 0) {
-            if (interactionConfig.saveAttachments) {
-                const savedAttachments = await saveMessageAttachments(message);
-                embed.addFields({
-                    name: 'Attachments',
-                    value: savedAttachments
-                        .map(attachment => `[${attachment.name}](${attachment.url})`)
-                        .join('\n')
-                });
-            } else {
-                embed.addFields({
-                    name: 'Attachments',
-                    value: message.attachments
-                        .map(attachment => `[${attachment.name}](${attachment.url})`)
-                        .join('\n')
-                })
-            }
-        }
+        const embed = await makeInfoEmbed(message);
 
         const outChannel = await message.client.channels.fetch(interactionConfig.logChannel);
         if (!outChannel?.isTextBased()) {
@@ -107,4 +77,41 @@ export default class Info implements BotInteraction {
             interaction.reply({ content, embeds });
         }
     }
+}
+
+export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
+    const interactionConfig = config.interactions.info;
+    const createdTimestamp = Math.floor(message.createdTimestamp / 1000);
+
+    let embed = new EmbedBuilder()
+        .setColor(0xAA8ED6)
+        .setAuthor({ name: `${message.author.tag} (${message.author.id})`, iconURL: message.author.displayAvatarURL() })
+        .setDescription(message.content || '*(No content)*')
+        .addFields({ name: 'Timestamp', value: `<t:${createdTimestamp}:d> <t:${createdTimestamp}:T>` });
+
+    if (message.editedTimestamp != null) {
+        const editedTimestamp = message.editedTimestamp != null ? Math.floor(message.editedTimestamp / 1000) : null;
+        embed.addFields({ name: 'Edited', value: `<t:${editedTimestamp}:d> <t:${editedTimestamp}:T>` });
+    }
+
+    if (message.attachments.size > 0) {
+        if (interactionConfig.saveAttachments) {
+            const savedAttachments = await saveMessageAttachments(message);
+            embed.addFields({
+                name: 'Attachments',
+                value: savedAttachments
+                    .map(attachment => `[${attachment.name}](${attachment.url})`)
+                    .join('\n')
+            });
+        } else {
+            embed.addFields({
+                name: 'Attachments',
+                value: message.attachments
+                    .map(attachment => `[${attachment.name}](${attachment.url})`)
+                    .join('\n')
+            })
+        }
+    }
+
+    return embed;
 }
