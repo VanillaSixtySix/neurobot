@@ -40,7 +40,7 @@ export default class QOL implements BotInteraction {
         if (threshold === 0) return;
         this.client.on('messageCreate', async message => {
             if (message.guildId !== config.guildId)
-            if (message.author.bot) return;
+            if (message.author.bot || message.webhookId != null) return;
             if (message.content.length >= threshold) {
                 await message.react(emote);
             }
