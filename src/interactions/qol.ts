@@ -1,4 +1,4 @@
-import { AutoModerationActionType, GuildTextBasedChannel, Message, MessageType } from 'discord.js';
+import { Message, MessageType } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
