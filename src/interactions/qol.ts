@@ -119,7 +119,9 @@ export default class QOL implements BotInteraction {
             if (!message.mentions.users.has(message.mentions.repliedUser.id)) return;
             if (message.mentions.repliedUser.id !== qolConfig.vedal) return;
             const embed = await makeInfoEmbed(message);
-            await logChannel.send({ content: `*Vedal reply mention in ${message.channel}; [Jump to message](${message.url})*`, embeds: [embed] });
+            const repliedMessage = await message.fetchReference();
+            const repliedEmbed = await makeInfoEmbed(repliedMessage);
+            await logChannel.send({ content: `*Vedal reply mention in ${message.channel}; [Jump to message](${message.url})*`, embeds: [repliedEmbed, embed] });
         });
     }
 }
