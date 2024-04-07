@@ -1,10 +1,12 @@
-import { AutoModerationActionType, GuildTextBasedChannel } from 'discord.js';
+import { AutoModerationActionType, GuildTextBasedChannel, Message, MessageType } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
 
 export default class QOL implements BotInteraction {
     constructor(private client: BotClient) {}
+
+    messageCache: Message[] = [];
 
     async init() {
         await this.initEssaying();
@@ -46,32 +48,48 @@ export default class QOL implements BotInteraction {
     async initAutoModAttachments() {
         const qolConfig = config.interactions.qol.autoMod;
         if (!qolConfig.sendFlagAttachments) return;
-        this.client.on('autoModerationActionExecution', async execution => {
-            if (execution.guild.id !== config.guildId) return;
-            if (execution.action.type !== AutoModerationActionType.SendAlertMessage) return;
-            if (execution.channel == null) return;
-            if (execution.messageId == null) return;
-            if (execution.alertSystemMessageId == null) return;
-            const message = await execution.channel.messages.fetch(execution.messageId);
-            if (message == null) return;
-            if (message.attachments.size === 0) return;
-            let rule = execution.guild.autoModerationRules.cache.get(execution.ruleId);
-            if (rule == null) {
-                rule = await execution.guild.autoModerationRules.fetch(execution.ruleId);
-                if (rule == null) return;
+
+        // EXPLANATION: While Discord has an event called "autoModerationActionExecution"
+        //  for listening to automod triggers, that requires Manage Server, which isn't
+        //  a reasonable permission to grant the bot just for this one QoL feature.
+        //
+        //  Instead, we're doing a little bit of a workaround. When the original message
+        //  is sent, if it triggers an automod flag, that system message has the exact
+        //  same timestamp and author details as the original message. Here, we'll use a
+        //  rolling cache of 10 messages instead of 2, just in case there's some edge
+        //  case with a really active server or slow/out-of-order API. Check for messages
+        //  that have the same createdTimestamp and author ID, and handle as before like
+        //  with the privileged event.
+
+        this.client.on('messageCreate', async message => {
+            if (this.messageCache.length === 10) {
+                this.messageCache.shift();
             }
-            const alertChannelId = execution.autoModerationRule?.actions
-                .find(action => action.metadata.channelId != null)?.metadata.channelId;
-            if (alertChannelId == null) return;
-            let alertChannel = execution.guild.channels.cache.get(alertChannelId) as GuildTextBasedChannel | undefined;
-            if (alertChannel == null) {
-                alertChannel = await execution.guild.channels.fetch(alertChannelId) as GuildTextBasedChannel | undefined;
-                if (alertChannel == null) return;
-            }
-            const alertMessage = await alertChannel.messages.fetch(execution.alertSystemMessageId);
-            if (alertMessage == null) return;
+            this.messageCache.push(message);
+
+            const sameTimestampsAndAuthors = this.messageCache.filter(cachedMessage => {
+                const first = this.messageCache.find(m =>
+                    m.createdTimestamp === cachedMessage.createdTimestamp &&
+                    m.author.id === cachedMessage.author.id
+                )!;
+                const last = this.messageCache.findLast(m =>
+                    m.createdTimestamp === cachedMessage.createdTimestamp &&
+                    m.author.id === cachedMessage.author.id
+                )!;
+                return first.id !== last.id;
+            });
+
+            // while testing always had this as [] or [ 0, 24 ], it might be different with a high enough activity
+            if (sameTimestampsAndAuthors.length !== 2) return;
+            const original = sameTimestampsAndAuthors.find(m => m.type === MessageType.Default)!;
+            const alertMessage = sameTimestampsAndAuthors.find(m => m.type === MessageType.AutoModerationAction)!;
+            if (original == null || alertMessage == null) return;
+            this.messageCache.splice(this.messageCache.indexOf(original), 1);
+            this.messageCache.splice(this.messageCache.indexOf(alertMessage), 1);
+
+            if (original.attachments.size === 0) return;
             await alertMessage.reply({
-                files: message.attachments.map(attachment => ({
+                files: original.attachments.map(attachment => ({
                     name: attachment.name,
                     attachment: attachment.url
                 }))
