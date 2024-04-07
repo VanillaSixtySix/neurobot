@@ -1,7 +1,8 @@
-import { Message, MessageType } from 'discord.js';
+import { GuildTextBasedChannel, Message, MessageType } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
+import { makeInfoEmbed } from './info';
 
 export default class QOL implements BotInteraction {
     constructor(private client: BotClient) {}
@@ -12,6 +13,7 @@ export default class QOL implements BotInteraction {
         await this.initEssaying();
         await this.initMinecraftFix();
         await this.initAutoModAttachments();
+        await this.initVedalReplyMention();
     }
 
     async initMinecraftFix() {
@@ -58,10 +60,11 @@ export default class QOL implements BotInteraction {
         //  same timestamp and author details as the original message. Here, we'll use a
         //  rolling cache of 10 messages instead of 2, just in case there's some edge
         //  case with a really active server or slow/out-of-order API. Check for messages
-        //  that have the same createdTimestamp and author ID, and handle as before like
+        //  that have the same createdTimestamp + author ID and handle as before like
         //  with the privileged event.
 
         this.client.on('messageCreate', async message => {
+            if (message.guildId !== config.guildId) return;
             if (this.messageCache.length === 10) {
                 this.messageCache.shift();
             }
@@ -94,6 +97,29 @@ export default class QOL implements BotInteraction {
                     attachment: attachment.url
                 }))
             });
+        });
+    }
+
+    async initVedalReplyMention() {
+        const qolConfig = config.interactions.qol.vedalReplyMention;
+        const guild = this.client.guilds.cache.get(config.guildId)!;
+        if (!guild) return;
+        const logChannel = guild.channels.cache.get(qolConfig.logChannel) as GuildTextBasedChannel;
+        if (!logChannel) return;
+        const ignoredRoleIds: string[] = qolConfig.ignoredRoles;
+        const ignoredChannelIds: string[] = qolConfig.ignoredChannels;
+        this.client.on('messageCreate', async message => {
+            if (message.guildId !== config.guildId) return;
+            if (message.author.bot) return;
+            if (message.member?.roles.cache.some(role => qolConfig.ignoredRoles.includes(role.id))) return;
+            if (ignoredRoleIds.some(roleId => message.member?.roles.cache.has(roleId)))
+            if (ignoredChannelIds.includes(message.channelId)) return;
+
+            if (message.mentions.repliedUser == null) return;
+            if (!message.mentions.users.has(message.mentions.repliedUser.id)) return;
+            if (message.mentions.repliedUser.id !== qolConfig.vedal) return;
+            const embed = await makeInfoEmbed(message);
+            await logChannel.send({ content: `*Vedal reply menton in ${message.channel}; [Jump to message](${message.url})*`, embeds: [embed] });
         });
     }
 }

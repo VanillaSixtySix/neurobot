@@ -34,6 +34,12 @@ threshold = 1000
 subRole = ""
 minecraftRole = ""
 
+[interactions.qol.vedalReplyMention]
+vedal = "170187485345742858"
+logChannel = ""
+ignoredRoles = []
+ignoredChannels = []
+
 [interactions.reactions]
 notificationChannel = ""
 
