@@ -87,12 +87,14 @@ export default class Info implements BotInteraction {
             const embeds = [];
 
             const globalAvatarEmbed = new EmbedBuilder()
+                .setColor(0xAA8ED6)
                 .setTitle('Global Avatar')
                 .setImage(user.avatarURL({ size: 4096 }));
             embeds.push(globalAvatarEmbed);
 
             if (member != null) {
                 const serverAvatarEmbed = new EmbedBuilder()
+                    .setColor(0xAA8ED6)
                     .setTitle('Server Avatar');
                 const avatar = member.avatarURL({ size: 4096 });
                 if (avatar != null) {
