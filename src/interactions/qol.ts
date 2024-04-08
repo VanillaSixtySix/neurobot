@@ -36,11 +36,13 @@ export default class QOL implements BotInteraction {
         const qolConfig = config.interactions.qol.essaying;
         const emote = qolConfig.emote;
         const threshold = qolConfig.threshold;
+        const ignoredChannels: string[] = qolConfig.ignoredChannels;
         if (emote === '') return;
         if (threshold === 0) return;
         this.client.on('messageCreate', async message => {
             if (message.guildId !== config.guildId)
             if (message.author.bot || message.webhookId != null) return;
+            if (ignoredChannels.includes(message.channelId)) return;
             if (message.content.length >= threshold) {
                 await message.react(emote);
             }

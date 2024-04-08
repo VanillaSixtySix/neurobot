@@ -29,6 +29,7 @@ sendFlagAttachments = true
 [interactions.qol.essaying]
 emote = ""
 threshold = 1000
+ignoredChannels = []
 
 [interactions.qol.minecraftFix]
 subRole = ""
