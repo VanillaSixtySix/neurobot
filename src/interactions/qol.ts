@@ -14,6 +14,7 @@ export default class QOL implements BotInteraction {
         await this.initMinecraftFix();
         await this.initAutoModAttachments();
         await this.initVedalReplyMention();
+        await this.initPollDeletion();
     }
 
     async initMinecraftFix() {
@@ -124,6 +125,27 @@ export default class QOL implements BotInteraction {
             const repliedMessage = await message.fetchReference();
             const repliedEmbed = await makeInfoEmbed(repliedMessage);
             await logChannel.send({ content: `*Vedal reply mention in ${message.channel}; [Jump to message](${message.url})*`, embeds: [repliedEmbed, embed] });
+        });
+    }
+
+    async initPollDeletion() {
+        const qolConfig = config.interactions.qol.pollDeletion;
+        const guild = this.client.guilds.cache.get(config.guildId)!;
+        if (!guild) return;
+        const logChannel = guild.channels.cache.get(qolConfig.logChannel) as GuildTextBasedChannel;
+        if (!logChannel) return;
+        const ignoredRoleIds: string[] = qolConfig.ignoredRoles;
+        const ignoredChannelIds: string[] = qolConfig.ignoredChannels;
+        this.client.on('raw', async data => {
+            if (data.t === 'MESSAGE_CREATE' && data.d.poll != null && data.d.guild_id === config.guildId) {
+                if (ignoredChannelIds.includes(data.d.channel_id)) return;
+                const channel = await this.client.guilds.cache.get(config.guildId)!.channels.fetch(data.d.channel_id) as GuildTextBasedChannel;
+                const message = await channel.messages.fetch(data.d.id);
+                if (message.member?.roles.cache.some(role => ignoredRoleIds.includes(role.id))) return;
+                const embed = await makeInfoEmbed(message);
+                await logChannel.send({ content: `*Poll auto-deleted in ${message.channel}; [Jump to where the message was](${message.url})*`, embeds: [embed] });
+                await message.delete();
+            }
         });
     }
 }

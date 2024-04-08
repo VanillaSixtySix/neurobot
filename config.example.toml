@@ -35,6 +35,11 @@ ignoredChannels = []
 subRole = ""
 minecraftRole = ""
 
+[interactions.qol.pollDeletion]
+logChannel = ""
+ignoredRoles = []
+ignoredChannels = []
+
 [interactions.qol.vedalReplyMention]
 vedal = "170187485345742858"
 logChannel = ""
