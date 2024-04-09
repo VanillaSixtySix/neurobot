@@ -92,7 +92,7 @@ export default class Reactions implements BotInteraction {
 
             if (packet.t === 'MESSAGE_REACTION_REMOVE') return;
 
-            const banned = reactionBans.some((ban: ReactionBan) => {
+            const banned = reactionBans.find((ban: ReactionBan) => {
                 ban.match = ban.match
                     .replaceAll('$$unicode$$', '\\u')
                     .replaceAll('$$UNICODE$$', '\\U');
@@ -100,6 +100,13 @@ export default class Reactions implements BotInteraction {
                 return regex.test(formedName) && ban.enabled && (ban.channels.includes(packet.d.channel_id) || !ban.ignoredChannels.includes(packet.d.channel_id));
             });
             if (banned) {
+                if (banned.match === '') {
+                    console.warn(`Reaction ban "${banned?.name}" has invalid or empty match`);
+                    return;
+                } else if (banned.match === '$$empty$$') {
+                    banned.match = '';
+                }
+
                 let channel = this.client.channels.cache.get(packet.d.channel_id) as TextChannel;
                 if (!channel) {
                     channel = await this.client.channels.fetch(packet.d.channel_id) as TextChannel;
