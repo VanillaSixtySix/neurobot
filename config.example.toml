@@ -46,8 +46,12 @@ logChannel = ""
 ignoredRoles = []
 ignoredChannels = []
 
-[interactions.reactions]
-notificationChannel = ""
+[[interactions.reactions.bans]]
+enables = false
+name = "Sample Ban"
+match = "samplename|sampleid"
+channels = []
+ignoredChannels = []
 
 [interactions.swarm]
 targetChannel = ""
