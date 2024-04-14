@@ -9,22 +9,27 @@ export default class QOL implements BotInteraction {
 
     messageCache: Message[] = [];
 
+    channelPollRateLimitStarts = new Map<string, number>();
+    userPollRateLimitStarts = new Map<string, number>();
+
     async init() {
         await this.initEssaying();
         await this.initMinecraftFix();
         await this.initAutoModAttachments();
         await this.initVedalReplyMention();
-        await this.initPollDeletion();
+        await this.initPollRestrictions();
     }
 
     async initMinecraftFix() {
         const qolConfig = config.interactions.qol.minecraftFix;
+
         const guild = this.client.guilds.cache.get(config.guildId)!;
         if (!guild) return;
         const subRole = guild.roles.cache.get(qolConfig.subRole)!;
         if (!subRole) return;
         const minecraftRole = guild.roles.cache.get(qolConfig.minecraftRole)!;
         if (!minecraftRole) return;
+
         this.client.on('guildMemberUpdate', async (oldMember, newMember) => {
             if (newMember.guild.id !== config.guildId) return;
             if (newMember.roles.cache.has(minecraftRole.id) && !newMember.roles.cache.has(subRole.id)) {
@@ -38,8 +43,10 @@ export default class QOL implements BotInteraction {
         const emote = qolConfig.emote;
         const threshold = qolConfig.threshold;
         const ignoredChannels: string[] = qolConfig.ignoredChannels;
+
         if (emote === '') return;
         if (threshold === 0) return;
+
         this.client.on('messageCreate', async message => {
             if (message.guildId !== config.guildId)
             if (message.author.bot || message.webhookId != null) return;
@@ -105,12 +112,14 @@ export default class QOL implements BotInteraction {
 
     async initVedalReplyMention() {
         const qolConfig = config.interactions.qol.vedalReplyMention;
+        const ignoredRoleIds: string[] = qolConfig.ignoredRoles;
+        const ignoredChannelIds: string[] = qolConfig.ignoredChannels;
+
         const guild = this.client.guilds.cache.get(config.guildId)!;
         if (!guild) return;
         const logChannel = guild.channels.cache.get(qolConfig.logChannel) as GuildTextBasedChannel;
         if (!logChannel) return;
-        const ignoredRoleIds: string[] = qolConfig.ignoredRoles;
-        const ignoredChannelIds: string[] = qolConfig.ignoredChannels;
+
         this.client.on('messageCreate', async message => {
             if (message.guildId !== config.guildId) return;
             if (message.author.bot) return;
@@ -128,23 +137,60 @@ export default class QOL implements BotInteraction {
         });
     }
 
-    async initPollDeletion() {
-        const qolConfig = config.interactions.qol.pollDeletion;
-        const guild = this.client.guilds.cache.get(config.guildId)!;
+    async initPollRestrictions() {
+        const qolConfig = config.interactions.qol.pollRestrictions;
+        const allowedRolesIds: string[] = qolConfig.allowedRoles;
+        const disallowedChannelIds: string[] = qolConfig.disallowedChannels;
+        const globalMinutesPerChannel: number = qolConfig.globalMinutesPerChannel;
+        const globalMinutesPerUser: number = qolConfig.globalMinutesPerUser;
+
+        const guild = this.client.guilds.cache.get(config.guildId);
         if (!guild) return;
-        const logChannel = guild.channels.cache.get(qolConfig.logChannel) as GuildTextBasedChannel;
-        if (!logChannel) return;
-        const ignoredRoleIds: string[] = qolConfig.ignoredRoles;
-        const ignoredChannelIds: string[] = qolConfig.ignoredChannels;
+
         this.client.on('raw', async data => {
             if (data.t === 'MESSAGE_CREATE' && data.d.poll != null && data.d.guild_id === config.guildId) {
-                if (ignoredChannelIds.includes(data.d.channel_id)) return;
                 const channel = await this.client.guilds.cache.get(config.guildId)!.channels.fetch(data.d.channel_id) as GuildTextBasedChannel;
                 const message = await channel.messages.fetch(data.d.id);
-                if (message.member?.roles.cache.some(role => ignoredRoleIds.includes(role.id))) return;
-                const embed = await makeInfoEmbed(message);
-                await logChannel.send({ content: `*Poll auto-deleted in ${message.channel}; [Jump to where the message was](${message.url})*`, embeds: [embed] });
-                await message.delete();
+                const messageTimestamp = Math.floor(message.createdTimestamp / 1000);
+
+                if (disallowedChannelIds.includes(data.d.channel_id)) {
+                    await message.delete();
+                    return;
+                }
+                if (!message.member?.roles.cache.some(role => allowedRolesIds.includes(role.id))) {
+                    await message.delete();
+                    return;
+                }
+                let userRateLimitStart = this.userPollRateLimitStarts.get(message.author.id);
+                if (userRateLimitStart != null) {
+                    const userRateLimitEnd = userRateLimitStart + globalMinutesPerUser * 60;
+                    if (messageTimestamp < userRateLimitEnd) {
+                        await message.delete();
+                        const newMessage = await channel.send(`Rate limited! ${message.author}, you may post another poll <t:${userRateLimitEnd}:R>.`);
+                        setTimeout(() => newMessage.delete(), (userRateLimitEnd - messageTimestamp) * 1000);
+                        return;
+                    }
+                }
+                let channelRateLimitStart = this.channelPollRateLimitStarts.get(data.d.channel_id);
+                if (channelRateLimitStart != null) {
+                    const channelRateLimitEnd = channelRateLimitStart + globalMinutesPerChannel * 60;
+                    if (messageTimestamp < channelRateLimitEnd) {
+                        await message.delete();
+                        const newMessage = await channel.send(`Rate limited! ${message.author}, polls will be available in this channel again <t:${channelRateLimitEnd}:R>.`);
+                        setTimeout(() => newMessage.delete(), (channelRateLimitEnd - messageTimestamp) * 1000);
+                        return;
+                    }
+                }
+
+                this.userPollRateLimitStarts.set(message.author.id, messageTimestamp);
+                setTimeout(() => {
+                    this.userPollRateLimitStarts.delete(message.author.id);
+                }, globalMinutesPerUser * 60 * 1000);
+
+                this.channelPollRateLimitStarts.set(data.d.channel_id, messageTimestamp);
+                setTimeout(() => {
+                    this.channelPollRateLimitStarts.delete(data.d.channel_id);
+                }, globalMinutesPerChannel * 60 * 1000);
             }
         });
     }
