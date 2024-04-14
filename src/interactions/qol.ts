@@ -167,7 +167,7 @@ export default class QOL implements BotInteraction {
                     if (messageTimestamp < userRateLimitEnd) {
                         await message.delete();
                         const newMessage = await channel.send(`Rate limited! ${message.author}, you may post another poll <t:${userRateLimitEnd}:R>.`);
-                        setTimeout(() => newMessage.delete(), (userRateLimitEnd - messageTimestamp) * 1000);
+                        setTimeout(() => newMessage.delete(), 8 * 1000);
                         return;
                     }
                 }
@@ -177,7 +177,7 @@ export default class QOL implements BotInteraction {
                     if (messageTimestamp < channelRateLimitEnd) {
                         await message.delete();
                         const newMessage = await channel.send(`Rate limited! ${message.author}, polls will be available in this channel again <t:${channelRateLimitEnd}:R>.`);
-                        setTimeout(() => newMessage.delete(), (channelRateLimitEnd - messageTimestamp) * 1000);
+                        setTimeout(() => newMessage.delete(), 8 * 1000);
                         return;
                     }
                 }
