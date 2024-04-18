@@ -2,7 +2,11 @@ import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommand
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { RawPacket, parseEmojiString, parseMessageInput } from '../utils';
-import config from '../../config.toml';
+
+import { file, TOML } from 'bun';
+
+// needed because importing the toml doesn't parse unicode correctly
+const config = TOML.parse(await file(import.meta.dir + '/../../config.toml').text()) as any;
 
 interface RawPacketReactionData {
     /** The ID of the user who owns/owned the reaction */
