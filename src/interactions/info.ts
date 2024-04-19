@@ -11,7 +11,7 @@ export default class Info implements BotInteraction {
         new ContextMenuCommandBuilder()
             .setName('Log Information')
             .setType(ApplicationCommandType.Message)
-            .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+            .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
         new SlashCommandBuilder()
             .setName('avatar')
             .setDescription('Displays the user\'s global and server avatars')
