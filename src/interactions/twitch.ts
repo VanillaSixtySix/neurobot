@@ -124,6 +124,8 @@ export default class Twitch implements BotInteraction {
 
         const duration = Math.ceil(poll.duration_seconds / 60);
 
+        const maxVotes = Math.max(...poll.choices.map(choice => choice.votes.total));
+
         const embed = new EmbedBuilder()
             .setColor(0xAA8ED6)
             .setDescription(`Duration: ${duration} minute${duration === 1 ? '' : 's'}`)
@@ -133,7 +135,7 @@ export default class Twitch implements BotInteraction {
                 const choiceTotal = choice.votes.total;
 
                 const votesText = `${choiceTotal} vote${choiceTotal === 1 ? '' : 's'}`
-                const isWinner = choiceTotal > (poll.votes.total / poll.choices.length);
+                const isWinner = choiceTotal === maxVotes;
                 const percentage = (Math.round(choiceTotal / poll.total_voters * 100) || 0) + '%';
 
                 return {
