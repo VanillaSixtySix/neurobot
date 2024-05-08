@@ -1,7 +1,6 @@
 import { Client, Message, User } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
-import { Readable } from 'stream';
 import config from '../config.toml';
 
 export interface RawPacket<T> {
@@ -107,10 +106,12 @@ export async function saveMessageAttachments(message: Message): Promise<MessageA
         const newName = `${message.id}-${originalFilename}`;
         const attachmentPath = path.join(attachmentDir, newName);
 
-        const attachmentRes = await fetch(attachment.url);
-
-        const stream = fs.createWriteStream(attachmentPath, { flags: 'w' });
-        Readable.fromWeb(attachmentRes.body!).pipe(stream);
+        await fetch(attachment.url)
+            .then(res => res.arrayBuffer())
+            .then(buffer => fs.writeFileSync(attachmentPath, Buffer.from(buffer)))
+            .catch(err => {
+                throw new Error(`Failed to save attachment: ${err}`);
+            });
 
         const attachmentURL = attachmentBaseURL + '/' + newName;
 
