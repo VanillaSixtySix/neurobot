@@ -1,4 +1,4 @@
-import { ApplicationCommandType, Attachment, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { ApplicationCommandType, Attachment, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
@@ -111,6 +111,13 @@ export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
                     .join('\n')
             })
         }
+    }
+
+    if (message.stickers.size > 0) {
+        embed.addFields({
+            name: 'Stickers',
+            value: message.stickers.map((sticker: Sticker) => `[${sticker.name}](${sticker.url})`).join('\n')
+        });
     }
 
     return embed;
