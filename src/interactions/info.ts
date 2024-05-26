@@ -1,4 +1,4 @@
-import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { ApplicationCommandType, Attachment, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import config from '../../config.toml';
@@ -107,7 +107,7 @@ export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
             embed.addFields({
                 name: 'Attachments',
                 value: message.attachments
-                    .map(attachment => `[${attachment.name}](${attachment.url})`)
+                    .map((attachment: Attachment) => `[${attachment.name}](${attachment.url})`)
                     .join('\n')
             })
         }
