@@ -180,3 +180,4 @@ config*.toml
 neurobot.db
 # Quick single-file bot testing
 /test.ts
+attachments
