@@ -29,8 +29,8 @@ export default class EmbedBan implements BotInteraction {
         if (!role) {
             role = await interaction.guild!.roles.fetch(embedBanRoleId);
             if (!role) {
-                await interaction.reply(`Pending role ${embedBanRoleId} does not exist. Please contact the bot operator.`);
-                console.error(`Pending role ${embedBanRoleId} does not exist`);
+                await interaction.reply(`Embed ban role ${embedBanRoleId} does not exist. Please contact the bot operator.`);
+                console.error(`Embed ban role ${embedBanRoleId} does not exist`);
                 return;
             }
         }
