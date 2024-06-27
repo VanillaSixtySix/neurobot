@@ -141,6 +141,8 @@ export default class QOL implements BotInteraction {
         const qolConfig = config.interactions.qol.pollRestrictions;
         const allowedRolesIds: string[] = qolConfig.allowedRoles;
         const disallowedChannelIds: string[] = qolConfig.disallowedChannels;
+        const bypassRoleIds: string[] = qolConfig.bypassRoles;
+        const bypassChannelIds: string[] = qolConfig.bypassChannels;
         const globalMinutesPerChannel: number = qolConfig.globalMinutesPerChannel;
         const globalMinutesPerUser: number = qolConfig.globalMinutesPerUser;
 
@@ -152,6 +154,13 @@ export default class QOL implements BotInteraction {
                 const channel = await this.client.guilds.cache.get(config.guildId)!.channels.fetch(data.d.channel_id) as GuildTextBasedChannel;
                 const message = await channel.messages.fetch(data.d.id);
                 const messageTimestamp = Math.floor(message.createdTimestamp / 1000);
+
+                if (message.member?.roles.cache.some(role => bypassRoleIds.includes(role.id))) {
+                    return;
+                }
+                if (bypassChannelIds.includes(data.d.channel_id)) {
+                    return;
+                }
 
                 if (disallowedChannelIds.includes(data.d.channel_id)) {
                     await message.delete();
