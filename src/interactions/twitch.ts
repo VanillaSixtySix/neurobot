@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { EmbedBuilder, TextBasedChannel } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import { config } from '../utils.ts';
+import { config, getServerConfig } from '../utils.ts';
 import { ServerConfig } from '../interfaces/Config.ts';
 
 interface Packet<T> {
@@ -70,23 +70,33 @@ interface PollCompleteData {
 export default class Twitch implements BotInteraction {
     constructor(private client: BotClient) {}
 
-    ws!: WebSocket;
+    sockets = new Map<string, WebSocket>();
+    totalCloses = new Map<string, number>();
 
-    totalCloses = 0;
-
-    async init() {
-        for (const serverConfig of config.servers) {
-            this.ws = new WebSocket('wss://pubsub-edge.twitch.tv/v1');
-            this.ws.addEventListener('open', event => this.onOpen(serverConfig, event as any));
-            this.ws.addEventListener('message', event => this.onMessage(serverConfig, event as any));
-            this.ws.addEventListener('close', event => this.onClose(event as any));
-            this.ws.addEventListener('error', event => this.onError(event as any));
-            this.totalCloses = 0;
+    async init(guildId?: string) {
+        if (guildId == null) {
+            for (const serverConfig of config.servers) {
+                this.sockets.set(serverConfig.guildId, new WebSocket('wss://pubsub-edge.twitch.tv/v1'));
+                this.sockets.get(serverConfig.guildId)!.addEventListener('open', event => this.onOpen(serverConfig, event as any));
+                this.sockets.get(serverConfig.guildId)!.addEventListener('message', event => this.onMessage(serverConfig, event as any));
+                this.sockets.get(serverConfig.guildId)!.addEventListener('close', event => this.onClose(serverConfig, event as any));
+                this.sockets.get(serverConfig.guildId)!.addEventListener('error', event => this.onError(event as any));
+                this.totalCloses.set(serverConfig.guildId, 0);
+            }
+            return;
         }
+        const serverConfig = getServerConfig(guildId);
+        if (!serverConfig) return;
+        this.sockets.set(serverConfig.guildId, new WebSocket('wss://pubsub-edge.twitch.tv/v1'));
+        this.sockets.get(serverConfig.guildId)!.addEventListener('open', event => this.onOpen(serverConfig, event as any));
+        this.sockets.get(serverConfig.guildId)!.addEventListener('message', event => this.onMessage(serverConfig, event as any));
+        this.sockets.get(serverConfig.guildId)!.addEventListener('close', event => this.onClose(serverConfig, event as any));
+        this.sockets.get(serverConfig.guildId)!.addEventListener('error', event => this.onError(event as any));
+        this.totalCloses.set(serverConfig.guildId, 0);
     }
 
     onOpen(serverConfig: ServerConfig, event: Event) {
-        this.ws.send(JSON.stringify({
+        this.sockets.get(serverConfig.guildId)!.send(JSON.stringify({
             type: 'LISTEN',
             data: {
                 auth_token: serverConfig.interactions.twitch.authKey,
@@ -95,7 +105,7 @@ export default class Twitch implements BotInteraction {
             }
         }));
         setInterval(() => {
-            this.ws.send(JSON.stringify({
+            this.sockets.get(serverConfig.guildId)!.send(JSON.stringify({
                 type: 'PING',
             }));
         }, 1000 * 60 * 4);
@@ -151,19 +161,20 @@ export default class Twitch implements BotInteraction {
         await pollResultsChannel.send({ embeds: [embed] });
     }
 
-    onClose(event: CloseEvent) {
+    onClose(serverConfig: ServerConfig, event: CloseEvent) {
         console.info('Twitch WebSocket closed');
         if (event.code !== 1006) {
             console.error(event);
             return;
         }
-        this.totalCloses++;
-        if (this.totalCloses > 5) {
+        const newTotalCloses = this.totalCloses.get(serverConfig.guildId)! + 1;
+        this.totalCloses.set(serverConfig.guildId, newTotalCloses);
+        if (newTotalCloses > 5) {
             console.error('Twitch WebSocket closed too many times');
             return;
         }
         setTimeout(() => {
-            this.init();
+            this.init(serverConfig.guildId);
         }, 1000 * 60 * 5);
     }
 
