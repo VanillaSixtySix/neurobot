@@ -1,7 +1,7 @@
 import { EmbedBuilder, EmbedData, Events, Message, TextChannel } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import config from '../../config.toml';
+import { getServerConfig } from '../utils';
 import { RawPacket } from '../utils';
 
 interface RawPacketMessageUpdateData {
@@ -39,18 +39,20 @@ export default class JP implements BotInteraction {
             if (packet.t !== 'MESSAGE_UPDATE') return;
             if (packet.d.author?.bot) return;
             if (!packet.d.guild_id) return;
-            if (packet.d.channel_id !== config.interactions.jp.targetChannel) return;
+            const serverConfig = getServerConfig(packet.d.guild_id);
+            if (!serverConfig) return;
+            if (packet.d.channel_id !== serverConfig.interactions.jp.targetChannel) return;
             if (typeof packet.d.content === 'undefined') return;
 
-            let targetChannel = this.client.channels.cache.get(config.interactions.jp.translationTargetChannel) as TextChannel;
+            let targetChannel = this.client.channels.cache.get(serverConfig.interactions.jp.translationTargetChannel) as TextChannel;
             if (!targetChannel) {
-                targetChannel = await this.client.channels.fetch(config.interactions.jp.translationTargetChannel) as TextChannel;
+                targetChannel = await this.client.channels.fetch(serverConfig.interactions.jp.translationTargetChannel) as TextChannel;
             }
 
             const toTranslate = packet.d.content;
             if (toTranslate.length === 0) return;
 
-            const translation = await this.translate(toTranslate);
+            const translation = await this.translate(serverConfig.interactions.jp.deeplAPIKey, toTranslate);
 
             const selectStmt = this.client.db.query('SELECT translated_message_id FROM jp_translations WHERE message_id = ?');
             const translatedMessageId = selectStmt.get(packet.d.id) as DBTranslation | undefined;
@@ -86,12 +88,14 @@ export default class JP implements BotInteraction {
 
     async onMessageCreate(message: Message) {
         if (message.author.bot) return;
-        if (!message.guild) return;
-        if (message.channelId !== config.interactions.jp.targetChannel) return;
+        if (!message.guildId) return;
+        const serverConfig = getServerConfig(message.guildId);
+        if (!serverConfig) return;
+        if (message.channelId !== serverConfig.interactions.jp.targetChannel) return;
 
-        let targetChannel = this.client.channels.cache.get(config.interactions.jp.translationTargetChannel) as TextChannel;
+        let targetChannel = this.client.channels.cache.get(serverConfig.interactions.jp.translationTargetChannel) as TextChannel;
         if (!targetChannel) {
-            targetChannel = await this.client.channels.fetch(config.interactions.jp.translationTargetChannel) as TextChannel;
+            targetChannel = await this.client.channels.fetch(serverConfig.interactions.jp.translationTargetChannel) as TextChannel;
         }
 
         const toTranslate = message.content;
@@ -100,7 +104,7 @@ export default class JP implements BotInteraction {
         // Don't translate if the message is only emojis
         if (/^(<a?:\w+:\d+> *)+$/.test(toTranslate)) return;
 
-        const translation = await this.translate(toTranslate);
+        const translation = await this.translate(serverConfig.interactions.jp.deeplAPIKey, toTranslate);
 
         const embed = new EmbedBuilder()
             .setColor(0xAA8ED6)
@@ -123,7 +127,7 @@ export default class JP implements BotInteraction {
      * @param input The input to translate.
      * @returns The translated text.
      */
-    async translate(input: string): Promise<string> {
+    async translate(apiKey: string, input: string): Promise<string> {
         const body = JSON.stringify({
             source_lang: 'JA',
             target_lang: 'EN-US',
@@ -134,7 +138,7 @@ export default class JP implements BotInteraction {
             body,
             method: 'POST',
             headers: {
-                Authorization: 'DeepL-Auth-Key ' + config.interactions.jp.deeplAPIKey,
+                Authorization: 'DeepL-Auth-Key ' + apiKey,
                 'Content-Type': 'application/json',
                 'Content-Length': body.length.toString(),
             }

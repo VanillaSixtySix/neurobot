@@ -1,12 +1,7 @@
 import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Events, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, TextChannel } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import { RawPacket, parseEmojiString, parseMessageInput } from '../utils';
-
-import { file, TOML } from 'bun';
-
-// needed because importing the toml doesn't parse unicode correctly
-const config = TOML.parse(await file(import.meta.dir + '/../../config.toml').text()) as any;
+import { config, getServerConfig, RawPacket, parseEmojiString, parseMessageInput } from '../utils';
 
 interface RawPacketReactionData {
     /** The ID of the user who owns/owned the reaction */
@@ -72,23 +67,27 @@ export default class Reactions implements BotInteraction {
     ];
 
     async init() {
-        const reactionBans: ReactionBan[] = config.interactions.reactions.bans;
-
-        this.client.db.exec(`
-            CREATE TABLE IF NOT EXISTS reactions (
-                guild_id TEXT NOT NULL,
-                channel_id TEXT NOT NULL,
-                message_id TEXT NOT NULL,
-                reactor_id TEXT NOT NULL,
-                emoji TEXT NOT NULL,
-                timestamp INTEGER NOT NULL,
-                added INTEGER NOT NULL DEFAULT 1
-            )
-        `);
+        const reactionBans = new Map<string, ReactionBan[]>();
+        for (const serverConfig of config.servers) {
+            reactionBans.set(serverConfig.guildId, serverConfig.interactions.reactions.bans);
+    
+            this.client.db.exec(`
+                CREATE TABLE IF NOT EXISTS reactions (
+                    guild_id TEXT NOT NULL,
+                    channel_id TEXT NOT NULL,
+                    message_id TEXT NOT NULL,
+                    reactor_id TEXT NOT NULL,
+                    emoji TEXT NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    added INTEGER NOT NULL DEFAULT 1
+                )
+            `);
+        }
 
         this.client.on(Events.Raw, async (packet: RawPacket<RawPacketReactionData>) => {
             if (packet.t !== 'MESSAGE_REACTION_ADD' && packet.t !== 'MESSAGE_REACTION_REMOVE') return;
             if (typeof packet.d.guild_id === 'undefined') return;
+            if (!reactionBans.has(packet.d.guild_id)) return;
 
             const formedName = packet.d.emoji.id != null ? `<${packet.d.emoji.animated ? 'a' : ''}:${packet.d.emoji.name}:${packet.d.emoji.id}>` : packet.d.emoji.name;
             const insertStmt = this.client.db.query('INSERT INTO reactions VALUES (?, ?, ?, ?, ?, ?, ?)');
@@ -96,7 +95,7 @@ export default class Reactions implements BotInteraction {
 
             if (packet.t === 'MESSAGE_REACTION_REMOVE') return;
 
-            const banned = reactionBans.find((ban: ReactionBan) => {
+            const banned = reactionBans.get(packet.d.guild_id)!.find((ban: ReactionBan) => {
                 ban.match = ban.match
                     .replaceAll('$$unicode$$', '\\u')
                     .replaceAll('$$UNICODE$$', '\\U');
@@ -132,9 +131,10 @@ export default class Reactions implements BotInteraction {
 
     async onChatInteraction(interaction: ChatInputCommandInteraction) {
         if (!interaction.inGuild()) return;
-        if (interaction.guildId !== config.guildId) return;
+        const serverConfig = getServerConfig(interaction.guildId);
+        if (!serverConfig) return;
 
-        const reactionBans: ReactionBan[] = config.interactions.reactions.bans;
+        const reactionBans: ReactionBan[] = serverConfig.interactions.reactions.bans;
 
         const subCommand = interaction.options.getSubcommand();
         if (subCommand === 'first') {
@@ -196,8 +196,10 @@ export default class Reactions implements BotInteraction {
 
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
         if (!interaction.inGuild()) return;
+        const serverConfig = getServerConfig(interaction.guildId);
+        if (!serverConfig) return;
 
-        const interactionConfig = config.interactions.info;
+        const interactionConfig = serverConfig.interactions.info;
 
         const message = interaction.targetMessage;
 

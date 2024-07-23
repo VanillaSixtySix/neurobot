@@ -2,9 +2,9 @@ import { Database } from 'bun:sqlite';
 import { BaseInteraction, Events, GatewayIntentBits } from 'discord.js';
 
 import { BotClient } from './classes/BotClient';
-import config from '../config.toml';
+import { config } from './utils.ts';
 
-const db = new Database("neurobot.db");
+const db = new Database('neurobot.db');
 
 const client = new BotClient({
     intents: [

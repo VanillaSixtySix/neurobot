@@ -1,63 +1,68 @@
 token = ""
 clientId = ""
+
+[[servers]]
 guildId = ""
 
-[attachments]
+[servers.attachments]
 save = true
 # Absolute path
 outDir = ""
 baseURL = ""
 
-[interactions.embedban]
+[servers.interactions.embedBan]
 role = ""
 
-[interactions.info]
+[servers.interactions.info]
 logChannel = ""
 saveAttachments = false
 
-[interactions.jp]
+[servers.interactions.jp]
 targetChannel = ""
 translationTargetChannel = ""
 deeplAPIKey = ""
 
-[interactions.pendingrole]
+[servers.interactions.pendingRole]
 role = ""
 
-[interactions.qol.automod]
+[servers.interactions.qol.autoMod]
 sendFlagAttachments = true
 
-[interactions.qol.essaying]
+[servers.interactions.qol.essaying]
 emote = ""
 threshold = 1000
 ignoredChannels = []
 
-[interactions.qol.minecraftFix]
+[servers.interactions.qol.minecraftFix]
 subRole = ""
 minecraftRole = ""
 
-[interactions.qol.pollRestrictions]
-allowedRoles = []
-disallowedChannels = []
+[servers.interactions.qol.pollRestrictions]
+enabled = false
 globalMinutesPerChannel = 1
 globalMinutesPerUser = 15
+allowedRoles = []
+disallowedChannels = []
+bypassRoles = []
+bypassChannels = []
 
-[interactions.qol.vedalReplyMention]
+[servers.interactions.qol.vedalReplyMention]
 vedal = "170187485345742858"
 logChannel = ""
 ignoredRoles = []
 ignoredChannels = []
 
-[[interactions.reactions.bans]]
-enables = false
+[[servers.interactions.reactions.bans]]
+enabled = false
 name = "Sample Ban"
 match = "samplename|sampleid"
 channels = []
 ignoredChannels = []
 
-[interactions.swarm]
+[servers.interactions.swarm]
 targetChannel = ""
 
-[interactions.twitch]
+[servers.interactions.twitch]
 authKey = ""
 # vedal987: 85498365
 pollUser = "85498365"

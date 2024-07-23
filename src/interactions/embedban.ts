@@ -1,7 +1,7 @@
 import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, GuildMember, Role } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import config from '../../config.toml';
+import { getServerConfig } from '../utils';
 import { parseDiscordUserInput } from '../utils';
 
 export default class EmbedBan implements BotInteraction {
@@ -22,7 +22,9 @@ export default class EmbedBan implements BotInteraction {
     ];
 
     async onChatInteraction(interaction: ChatInputCommandInteraction) {
-        const embedBanRoleId = config.interactions.embedban.role;
+        const serverConfig = getServerConfig(interaction.guildId!);
+        if (!serverConfig) return;
+        const embedBanRoleId = serverConfig.interactions.embedBan.role;
         if (!embedBanRoleId) return;
 
         let role: Role | null | undefined = interaction.guild!.roles.cache.get(embedBanRoleId);

@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { EmbedBuilder, TextBasedChannel } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import config from '../../config.toml';
+import { config } from '../utils.ts';
+import { ServerConfig } from '../interfaces/Config.ts';
 
 interface Packet<T> {
     type: string;
@@ -74,20 +75,22 @@ export default class Twitch implements BotInteraction {
     totalCloses = 0;
 
     async init() {
-        this.ws = new WebSocket('wss://pubsub-edge.twitch.tv/v1');
-        this.ws.addEventListener('open', event => this.onOpen(event));
-        this.ws.addEventListener('message', event => this.onMessage(event));
-        this.ws.addEventListener('close', event => this.onClose(event));
-        this.ws.addEventListener('error', event => this.onError(event));
-        this.totalCloses = 0;
+        for (const serverConfig of config.servers) {
+            this.ws = new WebSocket('wss://pubsub-edge.twitch.tv/v1');
+            this.ws.addEventListener('open', event => this.onOpen(serverConfig, event as any));
+            this.ws.addEventListener('message', event => this.onMessage(serverConfig, event as any));
+            this.ws.addEventListener('close', event => this.onClose(event as any));
+            this.ws.addEventListener('error', event => this.onError(event as any));
+            this.totalCloses = 0;
+        }
     }
 
-    onOpen(event: Event) {
+    onOpen(serverConfig: ServerConfig, event: Event) {
         this.ws.send(JSON.stringify({
             type: 'LISTEN',
             data: {
-                auth_token: config.interactions.twitch.authKey,
-                topics: ['polls.' + config.interactions.twitch.pollUser],
+                auth_token: serverConfig.interactions.twitch.authKey,
+                topics: ['polls.' + serverConfig.interactions.twitch.pollUser],
                 nonce: randomUUID(),
             }
         }));
@@ -98,7 +101,7 @@ export default class Twitch implements BotInteraction {
         }, 1000 * 60 * 4);
     }
 
-    async onMessage(event: MessageEvent) {
+    async onMessage(serverConfig: ServerConfig, event: MessageEvent) {
         const stringPacket = JSON.parse(event.data) as Packet<{
             topic: string;
             message: string;
@@ -112,7 +115,7 @@ export default class Twitch implements BotInteraction {
 
         const poll = (packet.data as PollCompleteData).poll;
 
-        const pollResultsChannelId = config.interactions.twitch.pollResultsChannel;
+        const pollResultsChannelId = serverConfig.interactions.twitch.pollResultsChannel;
         let pollResultsChannel = this.client.channels.cache.get(pollResultsChannelId) as TextBasedChannel;
         if (!pollResultsChannel) {
             pollResultsChannel = await this.client.channels.fetch(pollResultsChannelId) as TextBasedChannel;

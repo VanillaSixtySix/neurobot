@@ -1,7 +1,7 @@
 import { Events, Message } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import config from '../../config.toml';
+import { config, getServerConfig } from '../utils.ts';
 
 interface GuildState {
     count: number;
@@ -18,9 +18,11 @@ export default class Swarm implements BotInteraction {
     guildStates: Map<string, GuildState> = new Map();
 
     async onMessageCreate(message: Message) {
+        if (!message.inGuild()) return;
         if (message.author.bot) return;
-        if (!message.guild) return;
-        if (message.channelId !== config.interactions.swarm.targetChannel) return;
+        const serverConfig = getServerConfig(message.guildId);
+        if (!serverConfig) return;
+        if (message.channelId !== serverConfig.interactions.swarm.targetChannel) return;
         if (message.stickers.size === 0) return;
         const sticker = message.stickers.first()!;
 

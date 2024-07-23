@@ -1,5 +1,5 @@
 import { REST, Routes } from 'discord.js';
-import config from './config.toml';
+import { config } from './src/utils';
 import path from 'node:path';
 import { listFiles } from './src/utils';
 import { BotInteraction } from './src/classes/BotInteraction';
@@ -19,18 +19,20 @@ try {
         interactions.push(...(InteractionClass.builders || []).map(builder => builder.toJSON()));
     }
 
-    if (Bun.argv.includes('--clear')) {
+    for (const serverConfig of config.servers) {
+        if (Bun.argv.includes('--clear')) {
+            await rest.put(
+                Routes.applicationGuildCommands(config.clientId, serverConfig.guildId),
+                { body: [] },
+            )
+            console.info('Cleared existing application interactions');
+        }
+    
         await rest.put(
-            Routes.applicationGuildCommands(config.clientId, config.guildId),
-            { body: [] },
-        )
-        console.info('Cleared existing application interactions');
+            Routes.applicationGuildCommands(config.clientId, serverConfig.guildId),
+            { body: interactions },
+        );
     }
-
-    await rest.put(
-        Routes.applicationGuildCommands(config.clientId, config.guildId),
-        { body: interactions },
-    );
 
     console.info('Finished refreshing application interactions');
 } catch (error) {

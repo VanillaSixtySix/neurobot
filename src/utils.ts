@@ -1,7 +1,20 @@
 import { Client, Message, User } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
-import config from '../config.toml';
+
+import { file, TOML } from 'bun';
+import { Config, ServerConfig } from './interfaces/Config';
+
+export async function getConfig(): Promise<Config> {
+    const rawConfig = await file(import.meta.dir + '/../config.toml').text();
+    return TOML.parse(rawConfig) as Config;
+}
+const config = await getConfig();
+export { config };
+
+export function getServerConfig(guildId: string): ServerConfig | undefined {
+    return config.servers.find(serverConfig => serverConfig.guildId === guildId);
+}
 
 export interface RawPacket<T> {
     t: string;
@@ -93,11 +106,11 @@ export interface MessageAttachment {
  * @param message The message to save the attachments of
  * @returns A list of objects with the attachment file name and URL
  */
-export async function saveMessageAttachments(message: Message): Promise<MessageAttachment[]> {
+export async function saveMessageAttachments(serverConfig: ServerConfig, message: Message): Promise<MessageAttachment[]> {
     let attachmentFiles: MessageAttachment[] = [];
 
-    const attachmentDir = config.attachments.outDir;
-    const attachmentBaseURL = config.attachments.baseURL.replace(/\/$/, '');
+    const attachmentDir = serverConfig.attachments.outDir;
+    const attachmentBaseURL = serverConfig.attachments.baseURL.replace(/\/$/, '');
 
     fs.mkdirSync(attachmentDir, { recursive: true });
 

@@ -1,7 +1,7 @@
 import { ApplicationCommandType, Attachment, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import config from '../../config.toml';
+import { getServerConfig } from '../utils';
 import { parseDiscordUserInput, saveMessageAttachments } from '../utils';
 
 export default class Info implements BotInteraction {
@@ -26,7 +26,12 @@ export default class Info implements BotInteraction {
     ];
 
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
-        const interactionConfig = config.interactions.info;
+        const serverConfig = getServerConfig(interaction.guildId!);
+        if (!serverConfig) {
+            await interaction.reply({ content: 'Information logging not set up', ephemeral: true });
+            return;
+        }
+        const interactionConfig = serverConfig.interactions.info;
 
         const message = interaction.targetMessage;
         const embed = await makeInfoEmbed(message);
@@ -74,13 +79,14 @@ export default class Info implements BotInteraction {
             }
             const hasServerAvatar = embeds.length > 1 ? '✅' : '❌';
             const content = `✅ Global Avatar; ${hasServerAvatar} Server Avatar`;
-            interaction.reply({ content, embeds });
+            await interaction.reply({ content, embeds });
         }
     }
 }
 
 export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
-    const interactionConfig = config.interactions.info;
+    const serverConfig = getServerConfig(message.guildId!)!;
+    const interactionConfig = serverConfig.interactions.info;
     const createdTimestamp = Math.floor(message.createdTimestamp / 1000);
 
     let embed = new EmbedBuilder()
@@ -96,7 +102,7 @@ export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
 
     if (message.attachments.size > 0) {
         if (interactionConfig.saveAttachments) {
-            const savedAttachments = await saveMessageAttachments(message);
+            const savedAttachments = await saveMessageAttachments(serverConfig, message);
             embed.addFields({
                 name: 'Attachments',
                 value: savedAttachments

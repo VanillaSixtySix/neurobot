@@ -1,27 +1,31 @@
 import { Message, GuildMember, VoiceState, PartialGuildMember, Role } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import config from '../../config.toml';
+import { config } from '../utils.ts';
 
 import { beingReassigned } from './reassignrole.ts';
 
 export default class PendingRole implements BotInteraction {
     constructor(private client: BotClient) {}
 
-    pendingRole: Role | null = null;
+    pendingRoles = new Map<string, Role>();
 
     async init() {
-        const guild = this.client.guilds.cache.get(config.guildId)!;
-        if (!guild) return;
-        const pendingRoleId = config.interactions.pendingrole.role;
-        if (!pendingRoleId) return;
-        this.pendingRole = guild.roles.cache.get(pendingRoleId)!;
-        if (!this.pendingRole) {
-            this.pendingRole = await guild.roles.fetch(pendingRoleId);
-            if (!this.pendingRole) {
-                console.error(`Pending role ${pendingRoleId} does not exist`);
-                return;
+        for (const serverConfig of config.servers) {
+            const guildId = serverConfig.guildId;
+            const guild = this.client.guilds.cache.get(guildId);
+            if (!guild) return;
+            const pendingRoleId = serverConfig.interactions.pendingRole.role;
+            if (!pendingRoleId) return;
+            let pendingRole: Role | null = guild.roles.cache.get(pendingRoleId)!;
+            if (!pendingRole) {
+                pendingRole = await guild.roles.fetch(pendingRoleId);
+                if (!pendingRole) {
+                    console.error(`Pending role ${pendingRoleId} does not exist`);
+                    return;
+                }
             }
+            this.pendingRoles.set(guildId, pendingRole);
         }
 
         this.client.on('messageCreate', message => this.onMessageCreate(message));
@@ -30,21 +34,21 @@ export default class PendingRole implements BotInteraction {
     }
 
     async onMessageCreate(message: Message) {
-        if (message.guildId !== config.guildId) return;
-        if (message.author.bot) return;
         if (!message.inGuild()) return;
+        if (!this.pendingRoles.has(message.guildId)) return;
+        if (message.author.bot) return;
         await this.givePendingRole(message.member!, 'message');
     }
 
     async onMemberUpdate(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) {
-        if (newMember.guild.id !== config.guildId) return;
+        if (!this.pendingRoles.has(newMember.guild.id)) return;
         if (newMember.user.bot) return;
         if (beingReassigned.includes(newMember.id)) return;
         await this.givePendingRole(newMember, 'member update');
     }
 
     async onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState) {
-        if (newState.guild.id !== config.guildId) return;
+        if (!this.pendingRoles.has(newState.guild.id)) return;
         if (newState.member?.user.bot) return;
         await this.givePendingRole(newState.member!, 'voice');
     }
@@ -55,7 +59,8 @@ export default class PendingRole implements BotInteraction {
             return;
         }
 
-        if (member.roles.cache.has(this.pendingRole!.id)) return;
-        await member.roles.add(this.pendingRole!, `[interaction/${type}] User no longer pending rule verification`);
+        const pendingRoleId = this.pendingRoles.get(member.guild.id)!.id;
+        if (member.roles.cache.has(pendingRoleId)) return;
+        await member.roles.add(pendingRoleId, `[interaction/${type}] User no longer pending rule verification`);
     }
 }
