@@ -76,6 +76,7 @@ export default class Twitch implements BotInteraction {
     async init(guildId?: string) {
         if (guildId == null) {
             for (const serverConfig of config.servers) {
+                if (!serverConfig.interactions.twitch.pollResultsChannel) continue;
                 this.sockets.set(serverConfig.guildId, new WebSocket('wss://pubsub-edge.twitch.tv/v1'));
                 this.sockets.get(serverConfig.guildId)!.addEventListener('open', event => this.onOpen(serverConfig, event as any));
                 this.sockets.get(serverConfig.guildId)!.addEventListener('message', event => this.onMessage(serverConfig, event as any));
