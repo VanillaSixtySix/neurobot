@@ -159,7 +159,10 @@ export default class Twitch implements BotInteraction {
             }))
             .setFooter({ text: 'Total votes: ' + poll.total_voters });
 
-        await pollResultsChannel.send({ embeds: [embed] });
+        await pollResultsChannel.send({ embeds: [embed] })
+            .catch(err => {
+                console.error('Failed to send poll results message', err);
+            });
     }
 
     onClose(serverConfig: ServerConfig, event: CloseEvent) {
