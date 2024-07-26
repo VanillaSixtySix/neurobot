@@ -3,8 +3,6 @@ import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { config } from '../utils.ts';
 
-import { beingReassigned } from './reassignrole.ts';
-
 export default class PendingRole implements BotInteraction {
     constructor(private client: BotClient) {}
 
@@ -43,7 +41,6 @@ export default class PendingRole implements BotInteraction {
     async onMemberUpdate(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) {
         if (!this.pendingRoles.has(newMember.guild.id)) return;
         if (newMember.user.bot) return;
-        if (beingReassigned.includes(newMember.id)) return;
         await this.givePendingRole(newMember, 'member update');
     }
 
