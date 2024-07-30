@@ -12,15 +12,15 @@ export default class PendingRole implements BotInteraction {
         for (const serverConfig of config.servers) {
             const guildId = serverConfig.guildId;
             const guild = this.client.guilds.cache.get(guildId);
-            if (!guild) return;
+            if (!guild) continue;
             const pendingRoleId = serverConfig.interactions.pendingRole.role;
-            if (!pendingRoleId) return;
+            if (!pendingRoleId) continue;
             let pendingRole: Role | null = guild.roles.cache.get(pendingRoleId)!;
             if (!pendingRole) {
                 pendingRole = await guild.roles.fetch(pendingRoleId);
                 if (!pendingRole) {
                     console.error(`Pending role ${pendingRoleId} does not exist`);
-                    return;
+                    continue;
                 }
             }
             this.pendingRoles.set(guildId, pendingRole);
