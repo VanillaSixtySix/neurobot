@@ -46,7 +46,7 @@ export default class Info implements BotInteraction {
         const content = `*Message information requested by ${interaction.user} in ${message.channel}; [Jump to message](${message.url})*`;
         await outChannel.send({ content, embeds: [embed] });
 
-        await interaction.reply({ content: `Message information sent to ${outChannel}`, ephemeral: true });
+        await interaction.reply({ content: `Message information sent to ${outChannel}; [Jump to original message](${message.url})`, ephemeral: true });
     }
 
     async onChatInteraction(interaction: ChatInputCommandInteraction) {
