@@ -105,7 +105,6 @@ export default class PendingRole implements BotInteraction {
                 await interaction.editReply({ content: initialResponseStr + ` [${addedCount}/${membersArr.length}] ${percentDone}%` })
             }, 15 * 1000);
             for (const member of membersArr) {
-                console.log(`${member.user.username} has roles: ${member.roles.cache.map(r => r.name).join(', ')}`);
                 if (member.roles.cache.has(pendingRole.id)) continue;
                 await member.roles.add(pendingRole, '[command/pendingrole/add-missing] Manual invocation');
                 addedCount++;
