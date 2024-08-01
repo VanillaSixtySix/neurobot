@@ -17,9 +17,15 @@ export default class PendingRole implements BotInteraction {
                     .setName('add-missing')
                     .setDescription('Adds the pending role to anyone missing it')
             )
+            .addSubcommand(subCommand =>
+                subCommand
+                    .setName('stop')
+                    .setDescription('Stops an ongoing add-missing job')
+            )
     ]
 
     pendingRoles = new Map<string, Role>();
+    addMissingJobs = new Map<string, Timer>();
 
     async init() {
         for (const serverConfig of config.servers) {
@@ -100,22 +106,39 @@ export default class PendingRole implements BotInteraction {
             members = members.filter(member => !member.roles.cache.has(pendingRole.id));
             let addedCount = 0;
             const membersArr = members.toJSON();
-            let updateInterval = setInterval(async () => {
+            this.addMissingJobs.set(interaction.guildId, setInterval(async () => {
                 const percentDone = Math.floor((addedCount / membersArr.length) * 100);
                 try {
                     await interaction.editReply({ content: initialResponseStr + ` [${addedCount}/${membersArr.length}] ${percentDone}%` });
                 } catch (err) {
                     console.error('Failed to update PendingRole status:', err);
-                    clearInterval(updateInterval);
+                    clearInterval(this.addMissingJobs.get(interaction.guildId));
                 }
-            }, 15 * 1000);
+            }, 15 * 1000));
             for (const member of membersArr) {
+                if (!this.addMissingJobs.has(interaction.guildId)) {
+                    try {
+                        await interaction.followUp({ content: 'Cancelled', ephemeral: true });
+                        return;
+                    } catch (err) {
+                        return;
+                    }
+                }
                 if (member.roles.cache.has(pendingRole.id)) continue;
                 await member.roles.add(pendingRole, '[command/pendingrole/add-missing] Manual invocation');
                 addedCount++;
             }
-            clearInterval(updateInterval);
-            await interaction.followUp({ content: `Added \`${pendingRole.name}\` to ${addedCount} members missing it.` });
+            const timer = this.addMissingJobs.get(interaction.guildId);
+            await interaction.followUp({ content: `${timer ?? '(Cancelled) '}Added \`${pendingRole.name}\` to ${addedCount} members missing it.` });
+            clearInterval(timer);
+        } else if (subCommand === 'stop') {
+            const timer = this.addMissingJobs.get(interaction.guildId);
+            if (!timer) {
+                await interaction.reply({ content: 'No add-missing job running', ephemeral: true });
+                return;
+            }
+            clearInterval(timer);
+            await interaction.reply({ content: 'Stopped the ongoing add-missing job' });
         }
     }
 }
