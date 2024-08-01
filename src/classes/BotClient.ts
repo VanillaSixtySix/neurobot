@@ -35,6 +35,9 @@ export class BotClient extends Client {
             for (const builder of InteractionClass.builders ?? [{ name: InteractionClass.name + '-nobuilders' }]) {
                 this.interactions.set(builder.name, interaction);
             }
+            for (const customId of InteractionClass.customIds ?? []) {
+                this.interactions.set(customId, interaction);
+            }
         }
     }
 

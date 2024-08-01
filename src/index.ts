@@ -1,8 +1,9 @@
 import { Database } from 'bun:sqlite';
-import { BaseInteraction, Events, GatewayIntentBits } from 'discord.js';
+import { BaseInteraction, Events, GatewayIntentBits, Interaction } from 'discord.js';
 
 import { BotClient } from './classes/BotClient';
 import { config } from './utils.ts';
+import { BotInteraction } from './classes/BotInteraction.ts';
 
 const db = new Database('neurobot.db');
 
@@ -28,13 +29,17 @@ client.once(Events.ClientReady, async () => {
 });
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
-    if (!interaction.isCommand() && !interaction.isAutocomplete() && !interaction.isMessageContextMenuCommand()) return;
-
-    const botInteraction = client.interactions.get(interaction.commandName);
-    if (!botInteraction) {
-        console.error(`Interaction ${interaction.commandName} not found`);
-        return;
+    let botInteraction: BotInteraction | undefined;
+    if ('commandName' in interaction) {
+        botInteraction = client.interactions.get(<string>interaction.commandName);
+        if (!botInteraction) console.error(`Interaction ${interaction.commandName} not found`);
+    } else if ('customId' in interaction) {
+        botInteraction = client.interactions.get(<string>interaction.customId);
+        if (!botInteraction) console.error(`Interaction by custom ID ${interaction.customId} not found`);
+    } else {
+        console.error('Unknown interaction', interaction);
     }
+    if (!botInteraction) return;
 
     if (interaction.isChatInputCommand()) {
         try {
@@ -45,6 +50,17 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
                 await interaction.followUp({ content: 'An error occurred executing this command.', ephemeral: true });
             } else {
                 await interaction.reply({ content: 'An error occurred executing this command.', ephemeral: true });
+            }
+        }
+    } else if (interaction.isButton()) {
+        try {
+            await botInteraction.onButton?.(interaction);
+        } catch (err) {
+            console.error(err);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: 'An error occurred executing this button command.', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'An error occurred executing this button command.', ephemeral: true });
             }
         }
     } else if (interaction.isAutocomplete()) {
