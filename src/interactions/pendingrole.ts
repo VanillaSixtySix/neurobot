@@ -119,9 +119,9 @@ export default class PendingRole implements BotInteraction {
                 if (!this.addMissingJobs.has(interaction.guildId)) {
                     try {
                         await interaction.followUp({ content: 'Cancelled', ephemeral: true });
-                        return;
+                        break;
                     } catch (err) {
-                        return;
+                        break;
                     }
                 }
                 if (member.roles.cache.has(pendingRole.id)) continue;
