@@ -59,11 +59,6 @@ export default class Reactions implements BotInteraction {
                     .setName('listbans')
                     .setDescription('Lists all bans')
             ),
-        new ContextMenuCommandBuilder()
-            .setName('Log First Reactions')
-            .setType(ApplicationCommandType.Message)
-            .setDMPermission(false)
-            .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
     ];
 
     async init() {
@@ -194,29 +189,6 @@ export default class Reactions implements BotInteraction {
         }
     }
 
-    async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
-        if (!interaction.inGuild()) return;
-        const serverConfig = getServerConfig(interaction.guildId);
-        if (!serverConfig) return;
-
-        const interactionConfig = serverConfig.interactions.info;
-
-        const message = interaction.targetMessage;
-
-        const outChannel = await message.client.channels.fetch(interactionConfig.logChannel);
-        if (!outChannel?.isTextBased()) {
-            console.warn(`Channel ${interactionConfig.logChannel} is not a text channel`);
-            await interaction.reply({ content: 'An error occurred executing this interaction - output channel set incorrectly.', ephemeral: true });
-            return;
-        }
-
-        const content = `First reactions requested by ${interaction.user} in ${message.channel}`;
-        const embeds = await this.firstReactions(interaction.guildId, message.id);
-        await outChannel.send({ content, embeds });
-
-        await interaction.reply({ content: `First reactions sent to ${outChannel}`, ephemeral: true });
-    }
-
     /**
      * Returns embeds for the first reactions on a message
      * @param guildId The guild ID
@@ -303,12 +275,11 @@ export default class Reactions implements BotInteraction {
         }
 
         const embeds: EmbedBuilder[] = [];
-        const firstDescription = `[Jump to message](https://discord.com/channels/${guildId}/${channelId}/${messageId})\n\n`;
 
         for (let i = 0; i < embedChunks.length; i++) {
             let embed = new EmbedBuilder()
                 .setColor(0xAA8ED6)
-                .setDescription(`${i === 0 ? firstDescription : ''}${embedChunks[i]}`);
+                .setDescription(embedChunks[i]);
             if (i === 0) {
                 embed = embed.setTitle('First reactions');
             }

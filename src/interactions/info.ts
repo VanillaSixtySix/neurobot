@@ -1,8 +1,9 @@
-import { ApplicationCommandType, Attachment, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
+import { ActionRow, ActionRowBuilder, ApplicationCommandType, Attachment, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { getServerConfig } from '../utils';
 import { parseDiscordUserInput, saveMessageAttachments } from '../utils';
+import Reactions from './reactions';
 
 export default class Info implements BotInteraction {
     constructor(private client: BotClient) {}
@@ -24,6 +25,7 @@ export default class Info implements BotInteraction {
                     .setRequired(true)
             )
     ];
+    static customIds = ['showFirstReactions', 'hideFirstReactions'];
 
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
         const serverConfig = getServerConfig(interaction.guildId!);
@@ -43,8 +45,10 @@ export default class Info implements BotInteraction {
             return;
         }
 
+        const actionRow = makeShowFirstReactionsActionRow();
+
         const content = `*Message information requested by ${interaction.user} in ${message.channel}; [Jump to message](${message.url})*`;
-        await outChannel.send({ content, embeds: [embed] });
+        await outChannel.send({ content, embeds: [embed], components: [actionRow] });
 
         await interaction.reply({ content: `Message information sent to ${outChannel}; [Jump to original message](${message.url})`, ephemeral: true });
     }
@@ -82,6 +86,59 @@ export default class Info implements BotInteraction {
             await interaction.reply({ content, embeds });
         }
     }
+
+    async onButton(interaction: ButtonInteraction) {
+        if (interaction.customId === 'showFirstReactions') {
+            if (!interaction.inGuild()) {
+                await interaction.reply({ content: 'First reactions not supported outside of a server', ephemeral: true });
+                return;
+            }
+            if (!interaction.message.editable) {
+                await interaction.reply({ content: 'Unable to edit info message', ephemeral: true });
+                return;
+            }
+            
+            const messageEmbeds = interaction.message.embeds;
+            const messageIdMatch = messageEmbeds[0].footer?.text.match(/Message ID: (\d+)/);
+            if (!messageIdMatch) {
+                await interaction.reply({ content: 'Could not find message ID in info embed', ephemeral: true });
+                return;
+            }
+            const messageId = messageIdMatch[1];
+
+            const reactionInteraction = <Reactions>this.client.interactions.get(Reactions.name.toLowerCase());
+            const firstReactionsEmbeds = await reactionInteraction.firstReactions(interaction.guildId, messageId);
+
+            const actionRow = makeHideFirstReactionsActionRow();
+
+            await interaction.message.edit({
+                embeds: [
+                    ...messageEmbeds,
+                    ...firstReactionsEmbeds
+                ],
+                components: [actionRow]
+            });
+            await interaction.deferUpdate();
+        } else if (interaction.customId === 'hideFirstReactions') {
+            if (!interaction.inGuild()) {
+                await interaction.reply({ content: 'First reactions not supported outside of a server', ephemeral: true });
+                return;
+            }
+            if (!interaction.message.editable) {
+                await interaction.reply({ content: 'Unable to edit info message', ephemeral: true });
+                return;
+            }
+            const messageEmbeds = interaction.message.embeds;
+            
+            const actionRow = makeShowFirstReactionsActionRow();
+
+            await interaction.message.edit({
+                embeds: [messageEmbeds[0]],
+                components: [actionRow]
+            });
+            await interaction.deferUpdate();
+        }
+    }
 }
 
 export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
@@ -93,7 +150,8 @@ export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
         .setColor(0xAA8ED6)
         .setAuthor({ name: `${message.author.tag} (${message.author.id})`, iconURL: message.author.displayAvatarURL() })
         .setDescription(message.content || '*(No content)*')
-        .addFields({ name: 'Timestamp', value: `<t:${createdTimestamp}:d> <t:${createdTimestamp}:T>` });
+        .addFields({ name: 'Timestamp', value: `<t:${createdTimestamp}:d> <t:${createdTimestamp}:T>` })
+        .setFooter({ text: 'Message ID: ' + message.id + '\nChannel ID: ' + message.channelId });
 
     if (message.editedTimestamp != null) {
         const editedTimestamp = message.editedTimestamp != null ? Math.floor(message.editedTimestamp / 1000) : null;
@@ -127,4 +185,24 @@ export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
     }
 
     return embed;
+}
+
+function makeShowFirstReactionsActionRow(): ActionRowBuilder<ButtonBuilder> {
+    const showFirstReactions = new ButtonBuilder()
+        .setCustomId('showFirstReactions')
+        .setLabel('First Reactions')
+        .setStyle(ButtonStyle.Primary);
+
+    return new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(showFirstReactions);
+}
+
+function makeHideFirstReactionsActionRow(): ActionRowBuilder<ButtonBuilder> {
+    const hideFirstReactions = new ButtonBuilder()
+        .setCustomId('hideFirstReactions')
+        .setLabel('Hide First Reactions')
+        .setStyle(ButtonStyle.Secondary);
+
+    return new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(hideFirstReactions);
 }
