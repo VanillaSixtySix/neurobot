@@ -113,6 +113,7 @@ export default class PendingRole implements BotInteraction {
                 } catch (err) {
                     console.error('Failed to update PendingRole status:', err);
                     clearInterval(this.addMissingJobs.get(interaction.guildId));
+                    this.addMissingJobs.delete(interaction.guildId);
                 }
             }, 15 * 1000));
             for (const member of membersArr) {
@@ -131,6 +132,7 @@ export default class PendingRole implements BotInteraction {
             const timer = this.addMissingJobs.get(interaction.guildId);
             await interaction.followUp({ content: `${timer ?? '(Cancelled) '}Added \`${pendingRole.name}\` to ${addedCount} members missing it.` });
             clearInterval(timer);
+            this.addMissingJobs.delete(interaction.guildId);
         } else if (subCommand === 'stop') {
             const timer = this.addMissingJobs.get(interaction.guildId);
             if (!timer) {
@@ -138,6 +140,7 @@ export default class PendingRole implements BotInteraction {
                 return;
             }
             clearInterval(timer);
+            this.addMissingJobs.delete(interaction.guildId);
             await interaction.reply({ content: 'Stopped the ongoing add-missing job' });
         }
     }
