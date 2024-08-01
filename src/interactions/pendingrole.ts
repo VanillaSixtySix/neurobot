@@ -102,7 +102,12 @@ export default class PendingRole implements BotInteraction {
             const membersArr = members.toJSON();
             let updateInterval = setInterval(async () => {
                 const percentDone = Math.floor((addedCount / membersArr.length) * 100);
-                await interaction.editReply({ content: initialResponseStr + ` [${addedCount}/${membersArr.length}] ${percentDone}%` })
+                try {
+                    await interaction.editReply({ content: initialResponseStr + ` [${addedCount}/${membersArr.length}] ${percentDone}%` });
+                } catch (err) {
+                    console.error('Failed to update PendingRole status:', err);
+                    clearInterval(updateInterval);
+                }
             }, 15 * 1000);
             for (const member of membersArr) {
                 if (member.roles.cache.has(pendingRole.id)) continue;
