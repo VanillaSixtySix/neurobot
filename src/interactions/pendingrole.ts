@@ -1,10 +1,23 @@
-import { Message, GuildMember, VoiceState, PartialGuildMember, Role } from 'discord.js';
+import { Message, GuildMember, VoiceState, PartialGuildMember, Role, SlashCommandBuilder, PermissionFlagsBits, ChatInputCommandInteraction } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import { config } from '../utils.ts';
+import { config, getServerConfig } from '../utils.ts';
 
 export default class PendingRole implements BotInteraction {
     constructor(private client: BotClient) {}
+
+    static builders = [
+        new SlashCommandBuilder()
+            .setName('pendingrole')
+            .setDescription('Utilities for managing the pending role')
+            .setDMPermission(false)
+            .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+            .addSubcommand(subCommand =>
+                subCommand
+                    .setName('add-missing')
+                    .setDescription('Adds the pending role to anyone missing it')
+            )
+    ]
 
     pendingRoles = new Map<string, Role>();
 
@@ -58,6 +71,47 @@ export default class PendingRole implements BotInteraction {
 
         const pendingRoleId = this.pendingRoles.get(member.guild.id)!.id;
         if (member.roles.cache.has(pendingRoleId)) return;
-        await member.roles.add(pendingRoleId, `[interaction/${type}] User no longer pending rule verification`);
+        try {
+            await member.roles.add(pendingRoleId, `[interaction/${type}] User no longer pending rule verification`);
+        } catch (err) {
+            console.error(`Failed to give pending role in "${member.guild.name}" to "${member.user.username}":`, err);
+        }
+    }
+
+    async onChatInteraction(interaction: ChatInputCommandInteraction) {
+        if (!interaction.inGuild()) return;
+        const serverConfig = getServerConfig(interaction.guildId);
+        if (!serverConfig) return;
+
+        const subCommand = interaction.options.getSubcommand();
+        if (subCommand === 'add-missing') {
+            const pendingRole = this.pendingRoles.get(interaction.guildId);
+            if (!pendingRole) {
+                await interaction.reply({ content: 'Pending role not set up', ephemeral: true });
+                return;
+            }
+            const initialResponseStr = `Adding \`${pendingRole.name}\` to members missing it... this may take a while!`;
+            await interaction.reply({ content: initialResponseStr });
+            let members = await interaction.guild?.members.fetch();
+            if (!members) {
+                await interaction.reply({ content: 'Failed to fetch members', ephemeral: true });
+                return;
+            }
+            members = members.filter(member => !member.roles.cache.has(pendingRole.id));
+            let addedCount = 0;
+            const membersArr = members.toJSON();
+            let updateInterval = setInterval(async () => {
+                const percentDone = Math.floor((addedCount / membersArr.length) * 100);
+                await interaction.editReply({ content: initialResponseStr + ` [${addedCount}/${membersArr.length}] ${percentDone}%` })
+            }, 15);
+            for (const member of membersArr) {
+                console.log(`${member.user.username} has roles: ${member.roles.cache.map(r => r.name).join(', ')}`);
+                if (member.roles.cache.has(pendingRole.id)) continue;
+                await member.roles.add(pendingRole, '[command/pendingrole/add-missing] Manual invocation');
+                addedCount++;
+            }
+            clearInterval(updateInterval);
+            await interaction.followUp({ content: `Added \`${pendingRole.name}\` to ${addedCount} members missing it.` });
+        }
     }
 }
