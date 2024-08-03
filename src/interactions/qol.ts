@@ -171,13 +171,11 @@ export default class QOL implements BotInteraction {
     }
 
     async initPollRestrictions() {
-        this.client.on('raw', async data => {
-            if (data.t !== 'MESSAGE_CREATE') return;
-            if (data.d == null || data.d.guild_id == null) return;
-            if (data.d.poll == null) return;
-            const serverConfig = getServerConfig(data.d.guild_id);
+        this.client.on('messageCreate', async message => {
+            if (!message.inGuild()) return;
+            if (!message.poll) return;
+            const serverConfig = getServerConfig(message.guildId);
             if (!serverConfig) return;
-            
             const qolConfig = serverConfig.interactions.qol.pollRestrictions;
             if (!qolConfig.enabled) return;
             const allowedRolesIds: string[] = qolConfig.allowedRoles;
@@ -187,54 +185,46 @@ export default class QOL implements BotInteraction {
             const globalMinutesPerChannel: number = qolConfig.globalMinutesPerChannel;
             const globalMinutesPerUser: number = qolConfig.globalMinutesPerUser;
 
-            const channel = await this.client.guilds.cache.get(data.d.guild_id)!.channels.fetch(data.d.channel_id) as GuildTextBasedChannel;
-            const message = await channel.messages.fetch(data.d.id);
-            const messageTimestamp = Math.floor(message.createdTimestamp / 1000);
-
-            if (message.member?.roles.cache.some(role => bypassRoleIds.includes(role.id))) {
-                return;
-            }
-            if (bypassChannelIds.includes(data.d.channel_id)) {
-                return;
-            }
-
-            if (disallowedChannelIds.includes(data.d.channel_id)) {
+            if (message.member!.roles.cache.some(role => bypassRoleIds.includes(role.id))) return;
+            if (bypassChannelIds.includes(message.channelId)) return;
+            if (disallowedChannelIds.includes(message.channelId)) {
                 await message.delete();
                 return;
             }
-            if (!message.member?.roles.cache.some(role => allowedRolesIds.includes(role.id))) {
+            if (allowedRolesIds.length > 0 && !message.member!.roles.cache.some(role => allowedRolesIds.includes(role.id))) {
                 await message.delete();
                 return;
             }
+
             let userRateLimitStart = this.userPollRateLimitStarts.get(message.author.id);
             if (userRateLimitStart != null) {
-                const userRateLimitEnd = userRateLimitStart + globalMinutesPerUser * 60;
-                if (messageTimestamp < userRateLimitEnd) {
+                const userRateLimitEnd = userRateLimitStart + globalMinutesPerUser * 60 * 1000;
+                if (message.createdTimestamp < userRateLimitEnd) {
                     await message.delete();
-                    const newMessage = await channel.send(`Rate limited! ${message.author}, you may post another poll <t:${userRateLimitEnd}:R>.`);
+                    const newMessage = await message.channel.send(`Rate limited! ${message.author}, you may post another poll <t:${Math.ceil(userRateLimitEnd / 1000)}:R>.`);
                     setTimeout(() => newMessage.delete(), 8 * 1000);
                     return;
                 }
             }
-            let channelRateLimitStart = this.channelPollRateLimitStarts.get(data.d.channel_id);
+            let channelRateLimitStart = this.channelPollRateLimitStarts.get(message.channelId);
             if (channelRateLimitStart != null) {
-                const channelRateLimitEnd = channelRateLimitStart + globalMinutesPerChannel * 60;
-                if (messageTimestamp < channelRateLimitEnd) {
+                const channelRateLimitEnd = channelRateLimitStart + globalMinutesPerChannel * 60 * 1000;
+                if (message.createdTimestamp < channelRateLimitEnd) {
                     await message.delete();
-                    const newMessage = await channel.send(`Rate limited! ${message.author}, polls will be available in this channel again <t:${channelRateLimitEnd}:R>.`);
+                    const newMessage = await message.channel.send(`Rate limited! ${message.author}, polls will be available in this channel again <t:${Math.ceil(channelRateLimitEnd / 1000)}:R>.`);
                     setTimeout(() => newMessage.delete(), 8 * 1000);
                     return;
                 }
             }
 
-            this.userPollRateLimitStarts.set(message.author.id, messageTimestamp);
+            this.userPollRateLimitStarts.set(message.author.id, message.createdTimestamp);
             setTimeout(() => {
                 this.userPollRateLimitStarts.delete(message.author.id);
             }, globalMinutesPerUser * 60 * 1000);
 
-            this.channelPollRateLimitStarts.set(data.d.channel_id, messageTimestamp);
+            this.channelPollRateLimitStarts.set(message.channelId, message.createdTimestamp);
             setTimeout(() => {
-                this.channelPollRateLimitStarts.delete(data.d.channel_id);
+                this.channelPollRateLimitStarts.delete(message.channelId);
             }, globalMinutesPerChannel * 60 * 1000);
         });
     }
