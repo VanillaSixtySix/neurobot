@@ -109,6 +109,9 @@ export default class Info implements BotInteraction {
             const reactionInteraction = <Reactions>this.client.interactions.get(Reactions.name.toLowerCase());
             const firstReactionsEmbeds = await reactionInteraction.firstReactions(interaction.guildId, messageId);
 
+            const firstDescription = firstReactionsEmbeds[0].data.description;
+            firstReactionsEmbeds[0].setDescription(`(Expanded by ${interaction.user})\n\n${firstDescription}`)
+
             const actionRow = makeHideFirstReactionsActionRow();
 
             await interaction.message.edit({
