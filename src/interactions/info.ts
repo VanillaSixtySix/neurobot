@@ -10,7 +10,11 @@ export default class Info implements BotInteraction {
 
     static builders = [
         new ContextMenuCommandBuilder()
-            .setName('Log Information')
+            .setName('Log')
+            .setType(ApplicationCommandType.Message)
+            .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+        new ContextMenuCommandBuilder()
+            .setName('Log and Delete')
             .setType(ApplicationCommandType.Message)
             .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
         new SlashCommandBuilder()
@@ -28,29 +32,44 @@ export default class Info implements BotInteraction {
     static customIds = ['showFirstReactions', 'hideFirstReactions'];
 
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
-        const serverConfig = getServerConfig(interaction.guildId!);
-        if (!serverConfig) {
-            await interaction.reply({ content: 'Information logging not set up', ephemeral: true });
-            return;
+        if (interaction.commandName.startsWith('Log')) {
+            const serverConfig = getServerConfig(interaction.guildId!);
+            if (!serverConfig) {
+                await interaction.reply({ content: 'Information logging not set up', ephemeral: true });
+                return;
+            }
+            const interactionConfig = serverConfig.interactions.info;
+    
+            const message = interaction.targetMessage;
+            const embed = await makeInfoEmbed(message);
+    
+            const outChannel = await message.client.channels.fetch(interactionConfig.logChannel);
+            if (!outChannel?.isTextBased()) {
+                console.warn(`Channel ${interactionConfig.logChannel} is not a text channel`);
+                await interaction.reply({ content: 'An error occurred executing this interaction - output channel set incorrectly.', ephemeral: true });
+                return;
+            }
+    
+            const actionRow = makeShowFirstReactionsActionRow();
+
+            let targetLogContent = `*Message information requested by ${interaction.user} in ${message.channel}; [Jump to message](${message.url})*`;
+            let replyContent = `Message information sent to ${outChannel}; [Jump to original message](${message.url})`;
+    
+            if (interaction.commandName === 'Log and Delete') {
+                targetLogContent += ' *(deleted)*';
+            }
+            await outChannel.send({ content: targetLogContent, embeds: [embed], components: [actionRow] });
+    
+            if (interaction.commandName === 'Log and Delete') {
+                if (message.deletable) {
+                    await message.delete();
+                    replyContent += ' - message deleted'
+                } else {
+                    replyContent += ' - message could not be deleted';
+                }
+            }
+            await interaction.reply({ content: replyContent, ephemeral: true });
         }
-        const interactionConfig = serverConfig.interactions.info;
-
-        const message = interaction.targetMessage;
-        const embed = await makeInfoEmbed(message);
-
-        const outChannel = await message.client.channels.fetch(interactionConfig.logChannel);
-        if (!outChannel?.isTextBased()) {
-            console.warn(`Channel ${interactionConfig.logChannel} is not a text channel`);
-            await interaction.reply({ content: 'An error occurred executing this interaction - output channel set incorrectly.', ephemeral: true });
-            return;
-        }
-
-        const actionRow = makeShowFirstReactionsActionRow();
-
-        const content = `*Message information requested by ${interaction.user} in ${message.channel}; [Jump to message](${message.url})*`;
-        await outChannel.send({ content, embeds: [embed], components: [actionRow] });
-
-        await interaction.reply({ content: `Message information sent to ${outChannel}; [Jump to original message](${message.url})`, ephemeral: true });
     }
 
     async onChatInteraction(interaction: ChatInputCommandInteraction) {
