@@ -26,7 +26,7 @@ export default class QOL implements BotInteraction {
 
         for (const serverConfig of config.servers) {
             const qolConfig = serverConfig.interactions.qol.minecraftFix;
-    
+
             const guild = this.client.guilds.cache.get(serverConfig.guildId)!;
             if (!guild) continue;
             const subRole = guild.roles.cache.get(qolConfig.subRole)!;
@@ -54,7 +54,7 @@ export default class QOL implements BotInteraction {
 
         for (const serverConfig of config.servers) {
             const qolConfig = serverConfig.interactions.qol.essaying;
-    
+
             if (qolConfig.emote === '') continue;
             if (qolConfig.threshold === 0) continue;
 
@@ -74,14 +74,10 @@ export default class QOL implements BotInteraction {
     }
 
     async initAutoModAttachments() {
-        const enabledGuildIds: string[] = config.servers.map(serverConfig => {
-            if (serverConfig.interactions.qol.autoMod.sendFlagAttachments) {
-                return serverConfig.guildId;
-            }
-            return null;
-        }).filter(id => id != null);
-
-        if (enabledGuildIds.length === 0) return;
+        const anyEnabled = config.servers.some(serverConfig => {
+            return serverConfig.interactions.qol.autoMod.sendFlagAttachments;
+        })
+        if (!anyEnabled) return;
 
         // EXPLANATION: While Discord has an event called "autoModerationActionExecution"
         //  for listening to automod triggers, that requires Manage Server, which isn't
@@ -140,7 +136,7 @@ export default class QOL implements BotInteraction {
 
         for (const serverConfig of config.servers) {
             const qolConfig = serverConfig.interactions.qol.vedalReplyMention;
-    
+
             const guild = this.client.guilds.cache.get(serverConfig.guildId)!;
             if (!guild) return;
             const logChannel = guild.channels.cache.get(qolConfig.logChannel) as GuildTextBasedChannel;

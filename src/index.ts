@@ -1,5 +1,5 @@
 import { Database } from 'bun:sqlite';
-import { BaseInteraction, Events, GatewayIntentBits, Interaction } from 'discord.js';
+import { BaseInteraction, Events, GatewayIntentBits } from 'discord.js';
 
 import { BotClient } from './classes/BotClient';
 import { config } from './utils.ts';

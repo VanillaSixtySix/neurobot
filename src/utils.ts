@@ -79,14 +79,15 @@ export function parseEmojiString(input: string): { name: string; id: string; ani
 
 /**
  * Parses the given Discord username or ID as a User
+ * @param client The Discord client to search with
  * @param input The Discord username or ID
  * @returns The found user
  */
 export async function parseDiscordUserInput(client: Client, input: string) {
     input = input.trim();
     // match with this regex: (?:<@)?(\d{17,})(?:>)?
-    const idMatch = input?.match(/(?:<@)?(\d{17,})(?:>)?/);
-    let user: User | undefined = undefined;
+    const idMatch = input?.match(/(?:<@)?(\d{17,})>?/);
+    let user: User | undefined;
     if (idMatch == null) {
         // assume it's a username
         user = client.users.cache.find(cachedUser => cachedUser.username === input);
@@ -103,6 +104,7 @@ export interface MessageAttachment {
 
 /**
  * Locally saves attachments for the given message
+ * @param serverConfig The server config to configure attachment saving with
  * @param message The message to save the attachments of
  * @returns A list of objects with the attachment file name and URL
  */

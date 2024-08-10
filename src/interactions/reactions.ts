@@ -1,4 +1,4 @@
-import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Events, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, TextChannel } from 'discord.js';
+import { ChatInputCommandInteraction, EmbedBuilder, Events, PermissionFlagsBits, SlashCommandBuilder, TextChannel } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { config, getServerConfig, RawPacket, parseEmojiString, parseMessageInput } from '../utils';
@@ -65,7 +65,7 @@ export default class Reactions implements BotInteraction {
         const reactionBans = new Map<string, ReactionBan[]>();
         for (const serverConfig of config.servers) {
             reactionBans.set(serverConfig.guildId, serverConfig.interactions.reactions.bans);
-    
+
             this.client.db.exec(`
                 CREATE TABLE IF NOT EXISTS reactions (
                     guild_id TEXT NOT NULL,

@@ -1,4 +1,4 @@
-import { ActionRow, ActionRowBuilder, ApplicationCommandType, Attachment, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
+import { ActionRowBuilder, ApplicationCommandType, Attachment, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { getServerConfig } from '../utils';
@@ -39,27 +39,27 @@ export default class Info implements BotInteraction {
                 return;
             }
             const interactionConfig = serverConfig.interactions.info;
-    
+
             const message = interaction.targetMessage;
             const embed = await makeInfoEmbed(message);
-    
+
             const outChannel = await message.client.channels.fetch(interactionConfig.logChannel);
             if (!outChannel?.isTextBased()) {
                 console.warn(`Channel ${interactionConfig.logChannel} is not a text channel`);
                 await interaction.reply({ content: 'An error occurred executing this interaction - output channel set incorrectly.', ephemeral: true });
                 return;
             }
-    
+
             const actionRow = makeShowFirstReactionsActionRow();
 
             let targetLogContent = `*Message information requested by ${interaction.user} in ${message.channel}; [Jump to message](${message.url})*`;
             let replyContent = `Message information sent to ${outChannel}; [Jump to original message](${message.url})`;
-    
+
             if (interaction.commandName === 'Log and Delete') {
                 targetLogContent += ' *(deleted)*';
             }
             await outChannel.send({ content: targetLogContent, embeds: [embed], components: [actionRow] });
-    
+
             if (interaction.commandName === 'Log and Delete') {
                 if (message.deletable) {
                     await message.delete();
@@ -116,7 +116,7 @@ export default class Info implements BotInteraction {
                 await interaction.reply({ content: 'Unable to edit info message', ephemeral: true });
                 return;
             }
-            
+
             const messageEmbeds = interaction.message.embeds;
             const messageIdMatch = messageEmbeds[0].footer?.text.match(/Message ID: (\d+)/);
             if (!messageIdMatch) {
@@ -151,7 +151,7 @@ export default class Info implements BotInteraction {
                 return;
             }
             const messageEmbeds = interaction.message.embeds;
-            
+
             const actionRow = makeShowFirstReactionsActionRow();
 
             await interaction.message.edit({
