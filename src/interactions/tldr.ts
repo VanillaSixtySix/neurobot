@@ -1,4 +1,4 @@
-import { ApplicationCommandType, ChatInputCommandInteraction, ContextMenuCommandBuilder, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { ApplicationCommandType, ChatInputCommandInteraction, Collection, ContextMenuCommandBuilder, DiscordAPIError, DiscordjsErrorCodes, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { zodResponseFormat } from 'openai/helpers/zod.mjs';
@@ -21,7 +21,17 @@ export default class TLDR implements BotInteraction {
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
         if (interaction.commandName === 'TLDR Conversation') {
             await interaction.deferReply({ ephemeral: true });
-            const messages = (await interaction.channel?.messages.fetch({ limit: 100, before: interaction.targetMessage.id }))?.reverse();
+            let messages: Collection<string, Message> | undefined;
+            try {
+                messages = (await interaction.channel?.messages.fetch({ limit: 100, before: interaction.targetMessage.id }))?.reverse();
+            } catch (err) {
+                if (err instanceof DiscordAPIError && err.code === 50001) {
+                    await interaction.followUp({ content: 'Failed to TL;DR; missing access to messages', ephemeral: true });
+                    return;
+                }
+                await interaction.followUp({ content: 'Failed to TL;DR; failed to fetch messages', ephemeral: true });
+                return;
+            }
             const toTLDR = messages?.map(message => `${message.member?.displayName ?? message.author.displayName}: "${message.content}"`).join('\n') ?? '';
             if (toTLDR === '') {
                 console.log('flag 3');
