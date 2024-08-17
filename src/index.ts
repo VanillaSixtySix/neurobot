@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import { BaseInteraction, Events, GatewayIntentBits } from 'discord.js';
+import OpenAI from 'openai';
 
 import { BotClient } from './classes/BotClient';
 import { config } from './utils.ts';
@@ -7,7 +8,11 @@ import { BotInteraction } from './classes/BotInteraction.ts';
 
 const db = new Database('neurobot.db');
 
-const client = new BotClient({
+const openAI = new OpenAI({
+    apiKey: config.openAIAPIKey,
+});
+
+const botClient = new BotClient({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
@@ -20,21 +25,21 @@ const client = new BotClient({
         parse: [],
         repliedUser: true,
     },
-}, db);
+}, db, openAI);
 
-client.once(Events.ClientReady, async () => {
+botClient.once(Events.ClientReady, async () => {
     console.log('Ready!');
 
-    await client.loadInteractions();
+    await botClient.loadInteractions();
 });
 
-client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
+botClient.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     let botInteraction: BotInteraction | undefined;
     if ('commandName' in interaction) {
-        botInteraction = client.interactions.get(<string>interaction.commandName);
+        botInteraction = botClient.interactions.get(<string>interaction.commandName);
         if (!botInteraction) console.error(`Interaction ${interaction.commandName} not found`);
     } else if ('customId' in interaction) {
-        botInteraction = client.interactions.get(<string>interaction.customId);
+        botInteraction = botClient.interactions.get(<string>interaction.customId);
         if (!botInteraction) console.error(`Interaction by custom ID ${interaction.customId} not found`);
     } else {
         console.error('Unknown interaction', interaction);
@@ -83,10 +88,10 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     }
 });
 
-client.login(config.token);
+botClient.login(config.token);
 
 process.on('SIGINT', async () => {
     console.info('\nGoodbye');
-    await client.destroy();
+    await botClient.destroy();
     process.exit(0);
 });

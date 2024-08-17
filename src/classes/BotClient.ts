@@ -1,16 +1,20 @@
 import path from 'node:path';
 import Database from 'bun:sqlite';
 import { Client, ClientOptions, Collection } from 'discord.js';
+import OpenAI from 'openai';
 import { BotInteraction } from './BotInteraction';
 import { listFiles } from '../utils';
 
 export class BotClient extends Client {
     interactions: Collection<string, BotInteraction>;
     db: Database;
-    constructor(options: ClientOptions, db: Database) {
+    openAI: OpenAI;
+
+    constructor(options: ClientOptions, db: Database, openAI: OpenAI) {
         super(options);
 
         this.db = db;
+        this.openAI = openAI;
         this.interactions = new Collection();
     }
 

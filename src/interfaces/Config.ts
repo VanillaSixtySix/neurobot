@@ -1,6 +1,7 @@
 export interface Config {
     token: string;
     clientId: string;
+    openAIAPIKey: string;
 
     servers: ServerConfig[];
 }
