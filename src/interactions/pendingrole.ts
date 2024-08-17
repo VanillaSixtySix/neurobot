@@ -54,7 +54,7 @@ export default class PendingRole implements BotInteraction {
         if (!message.inGuild()) return;
         if (!this.pendingRoles.has(message.guildId)) return;
         if (message.author.bot) return;
-        await this.givePendingRole(message.member!, 'message');
+        await this.givePendingRole(message.member, 'message');
     }
 
     async onMemberUpdate(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) {
@@ -66,10 +66,10 @@ export default class PendingRole implements BotInteraction {
     async onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState) {
         if (!this.pendingRoles.has(newState.guild.id)) return;
         if (newState.member?.user.bot) return;
-        await this.givePendingRole(newState.member!, 'voice');
+        await this.givePendingRole(newState.member, 'voice');
     }
 
-    async givePendingRole(member: GuildMember, type: string = 'generic') {
+    async givePendingRole(member: GuildMember | null, type: string = 'generic') {
         if (member == null) {
             console.error(`[interaction/${type}] member is null`);
             return;
