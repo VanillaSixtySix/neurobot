@@ -1,7 +1,7 @@
 import { EmbedBuilder, EmbedData, Events, Message, TextChannel } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import { getServerConfig } from '../utils';
+import { getServerConfig, splitByLengthWithNearestDelimiter } from '../utils';
 import { RawPacket } from '../utils';
 
 interface RawPacketMessageUpdateData {
@@ -22,6 +22,8 @@ interface DBTranslation {
 
 export default class JP implements BotInteraction {
     constructor(private client: BotClient) {}
+
+    private fieldValueMaxLength = 1000;
 
     async init() {
         this.client.db.exec(`
@@ -104,15 +106,35 @@ export default class JP implements BotInteraction {
         // Don't translate if the message is only emojis
         if (/^(<a?:\w+:\d+> *)+$/.test(toTranslate)) return;
 
-        const translation = await this.translate(serverConfig.interactions.jp.deeplAPIKey, toTranslate);
+        const fullTranslation = await this.translate(serverConfig.interactions.jp.deeplAPIKey, toTranslate);
+
+        let originalChunks = splitByLengthWithNearestDelimiter(message.content, this.fieldValueMaxLength);
+
+        if (originalChunks.length > 3) {
+            originalChunks = originalChunks.slice(0, 2);
+            originalChunks[1] = originalChunks[1].slice(0, this.fieldValueMaxLength - 4) + ' ...';
+        }
+
+        const originalFields = originalChunks
+            .map(original => ({ name: ' ', value: original }));
+
+        let translationChunks = splitByLengthWithNearestDelimiter(fullTranslation, 1000);
+
+        if (translationChunks.length > 3) {
+            translationChunks = translationChunks.slice(0, 2);
+            translationChunks[1] = translationChunks[1].slice(0, this.fieldValueMaxLength - 4) + ' ...';
+        }
+
+        const translationFields = translationChunks
+            .map((translation, i) => ({ name: i === 0 ? 'Translation' : ' ', value: translation }));
 
         const embed = new EmbedBuilder()
             .setColor(0xAA8ED6)
             .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
             .setDescription(`via DeepL | [Jump to message](${message.url})`)
             .addFields([
-                { name: ' ', value: message.content },
-                { name: 'Translation', value: translation },
+                ...originalFields,
+                ...translationFields,
             ])
             .setTimestamp(message.createdTimestamp);
 

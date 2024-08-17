@@ -145,3 +145,34 @@ export async function saveMessageAttachments(serverConfig: ServerConfig, message
 
     return attachmentFiles;
 }
+
+/**
+ * Splits a string by max length to the rightmost delimiter
+ * @param input The string to split into chunks
+ * @param maxLength The maximum string length per chunk
+ * @param delim The delimiter to split by
+ * @returns The split chunks
+ */
+export function splitByLengthWithNearestDelimiter(input: string, maxLength: number, delim: string = ' '): string[] {
+    const result: string[] = [];
+    let startIndex = 0;
+
+    while (startIndex < input.length) {
+        if (startIndex + maxLength >= input.length) {
+            result.push(input.slice(startIndex));
+            break;
+        }
+
+        let endIndex = startIndex + maxLength;
+        let lastDelimIndex = input.lastIndexOf(delim, endIndex);
+
+        if (lastDelimIndex > startIndex) {
+            endIndex = lastDelimIndex + delim.length;
+        }
+
+        result.push(input.slice(startIndex, endIndex));
+        startIndex = endIndex;
+    }
+
+    return result;
+}
