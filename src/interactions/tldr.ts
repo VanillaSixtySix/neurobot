@@ -21,7 +21,7 @@ export default class TLDR implements BotInteraction {
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
         if (interaction.commandName === 'TLDR Conversation') {
             await interaction.deferReply({ ephemeral: true });
-            const messages = await interaction.channel?.messages.fetch({ limit: 100, before: interaction.targetMessage.id });
+            const messages = (await interaction.channel?.messages.fetch({ limit: 100, before: interaction.targetMessage.id }))?.reverse();
             const toTLDR = messages?.map(message => `${message.member?.displayName ?? message.author.displayName}: "${message.content}"`).join('\n') ?? '';
             if (toTLDR === '') {
                 console.log('flag 3');
