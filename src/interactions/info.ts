@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ApplicationCommandType, Attachment, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
+import { ActionRowBuilder, ApplicationCommandType, Attachment, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, ContextMenuCommandBuilder, DiscordAPIError, DiscordjsErrorCodes, EmbedBuilder, GuildTextBasedChannel, Message, MessageContextMenuCommandInteraction, messageLink, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { getServerConfig } from '../utils';
@@ -12,11 +12,11 @@ export default class Info implements BotInteraction {
         new ContextMenuCommandBuilder()
             .setName('Log')
             .setType(ApplicationCommandType.Message)
-            .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+            .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
         new ContextMenuCommandBuilder()
             .setName('Log and Delete')
             .setType(ApplicationCommandType.Message)
-            .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+            .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
         new SlashCommandBuilder()
             .setName('avatar')
             .setDescription('Displays the user\'s global and server avatars')
@@ -27,15 +27,25 @@ export default class Info implements BotInteraction {
                     .setName('user')
                     .setDescription('The user\'s username or ID')
                     .setRequired(true)
-            )
+            ),
     ];
     static customIds = ['showFirstReactions', 'hideFirstReactions'];
 
+    private infoDeleteMessages = {
+        success: ' *(deleted)*',
+        botMissingPermissions: ' *(failed to delete; bot missing permissions)*',
+        unknown: ' *(failed to delete; unknown)*',
+    };
+
     async onContextMenuInteraction(interaction: MessageContextMenuCommandInteraction) {
         if (interaction.commandName.startsWith('Log')) {
-            const serverConfig = getServerConfig(interaction.guildId!);
+            if (!interaction.inGuild()) {
+                await interaction.reply({ content: 'Message logging not supported outside of a server', ephemeral: true });
+                return;
+            }
+            const serverConfig = getServerConfig(interaction.guildId);
             if (!serverConfig) {
-                await interaction.reply({ content: 'Information logging not set up', ephemeral: true });
+                await interaction.reply({ content: 'Message logging not set up', ephemeral: true });
                 return;
             }
             const interactionConfig = serverConfig.interactions.info;
@@ -56,18 +66,23 @@ export default class Info implements BotInteraction {
             let replyContent = `Message information sent to ${outChannel}; [Jump to original message](${message.url})`;
 
             if (interaction.commandName === 'Log and Delete') {
-                targetLogContent += ' *(deleted)*';
-            }
-            await outChannel.send({ content: targetLogContent, embeds: [embed], components: [actionRow] });
-
-            if (interaction.commandName === 'Log and Delete') {
                 if (message.deletable) {
-                    await message.delete();
-                    replyContent += ' - message deleted'
+                    try {
+                        await message.delete()
+                        targetLogContent += this.infoDeleteMessages.success;
+                        replyContent += this.infoDeleteMessages.success;
+                    } catch (err) {
+                        console.warn(`Failed to delete message at ${messageLink} despite passing checks:`, err);
+                        targetLogContent += this.infoDeleteMessages.unknown;
+                        replyContent += this.infoDeleteMessages.unknown;
+                    }
                 } else {
-                    replyContent += ' - message could not be deleted';
+                    targetLogContent += this.infoDeleteMessages.botMissingPermissions;
+                    replyContent += this.infoDeleteMessages.botMissingPermissions;
                 }
             }
+
+            await outChannel.send({ content: targetLogContent, embeds: [embed], components: [actionRow] });
             await interaction.reply({ content: replyContent, ephemeral: true });
         }
     }
