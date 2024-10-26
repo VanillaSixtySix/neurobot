@@ -256,7 +256,7 @@ async function formatMessageReference(message: Message): Promise<string> {
         const referredMessage = await message.fetchReference();
         const externalServerConfig = referredMessage.guildId ? getServerConfig(referredMessage.guildId) : undefined;
 
-        const referredMessageStr = `${referredMessage.author.displayName}: ${referredMessage.content}`;
+        const referredMessageStr = `<@${referredMessage.author.id}>: ${referredMessage.content}`;
         return `${referredMessageStr}\n\n${(externalServerConfig ? `[Jump to referenced message](${referredMessage.url})` : '*(Message outside of server)*')}`;
     } catch (err: any) {
         if (err.code === "GuildChannelResolve") {
