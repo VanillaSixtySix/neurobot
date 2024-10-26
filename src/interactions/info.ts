@@ -240,7 +240,31 @@ export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
         });
     }
 
+    if (message.reference) {
+        embed.addFields({
+            name: "Reference (reply/forward)",
+            value: await formatMessageReference(message)
+        });
+    }
+
     return embed;
+}
+
+async function formatMessageReference(message: Message): Promise<string> {
+    try {
+        // We can use messageSnapshot for forwarded messages when Discord releases them.
+        const referredMessage = await message.fetchReference();
+        const externalServerConfig = referredMessage.guildId ? getServerConfig(referredMessage.guildId) : undefined;
+
+        const referredMessageStr = `${referredMessage.author.displayName}: ${referredMessage.content}`;
+        return `${referredMessageStr}\n\n${(externalServerConfig ? `[Jump to referenced message](${referredMessage.url})` : '*(Message outside of server)*')}`;
+    } catch (err: any) {
+        if (err.code === "GuildChannelResolve") {
+            return '*(Could not fetch referenced message)*';
+        }
+        console.error('Failed to fetch message reference:', err);
+        return 'Something went wrong.';
+    }
 }
 
 function makeShowFirstReactionsActionRow(): ActionRowBuilder<ButtonBuilder> {
