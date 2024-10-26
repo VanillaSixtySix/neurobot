@@ -1,4 +1,14 @@
-import { Message, GuildMember, VoiceState, PartialGuildMember, Role, SlashCommandBuilder, PermissionFlagsBits, ChatInputCommandInteraction } from 'discord.js';
+import {
+    Message,
+    GuildMember,
+    VoiceState,
+    PartialGuildMember,
+    Role,
+    SlashCommandBuilder,
+    PermissionFlagsBits,
+    ChatInputCommandInteraction,
+    InteractionContextType
+} from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { config, getServerConfig } from '../utils.ts';
@@ -10,7 +20,7 @@ export default class PendingRole implements BotInteraction {
         new SlashCommandBuilder()
             .setName('pendingrole')
             .setDescription('Utilities for managing the pending role')
-            .setDMPermission(false)
+            .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
             .addSubcommand(subCommand =>
                 subCommand

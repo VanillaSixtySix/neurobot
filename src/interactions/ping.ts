@@ -1,4 +1,9 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import {
+    ChatInputCommandInteraction,
+    InteractionContextType,
+    PermissionFlagsBits,
+    SlashCommandBuilder
+} from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 
@@ -20,7 +25,7 @@ export default class Ping implements BotInteraction {
         new SlashCommandBuilder()
             .setName('ping')
             .setDescription('Gets the ping of the client and Discord\'s API')
-            .setDMPermission(false)
+            .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
     ];
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { listFiles } from './src/utils';
 import { BotInteraction } from './src/classes/BotInteraction';
 
-const rest = new REST({ version: '10' }).setToken(config.token);
+const rest = new REST().setToken(config.token);
 
 try {
     console.info('Refreshing application interactions...');

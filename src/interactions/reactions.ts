@@ -1,4 +1,12 @@
-import { ChatInputCommandInteraction, EmbedBuilder, Events, PermissionFlagsBits, SlashCommandBuilder, TextChannel } from 'discord.js';
+import {
+    ChatInputCommandInteraction,
+    EmbedBuilder,
+    Events,
+    InteractionContextType,
+    PermissionFlagsBits,
+    SlashCommandBuilder,
+    TextChannel
+} from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { config, getServerConfig, RawPacket, parseEmojiString, parseMessageInput } from '../utils';
@@ -41,7 +49,7 @@ export default class Reactions implements BotInteraction {
         new SlashCommandBuilder()
             .setName('reactions')
             .setDescription('Utilities for handling reactions')
-            .setDMPermission(false)
+            .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
             .addSubcommand(subCommand =>
                 subCommand
@@ -206,8 +214,6 @@ export default class Reactions implements BotInteraction {
                     .setDescription('No reactions found.')
             ];
         }
-
-        const channelId = dbRes[0].channel_id;
 
         const groupedByEmoji: {
             [key: string]: {

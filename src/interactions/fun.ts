@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, InteractionContextType, SlashCommandBuilder } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 
@@ -9,7 +9,7 @@ export default class Fun implements BotInteraction {
         new SlashCommandBuilder()
             .setName('pet')
             .setDescription('Pets the bot.')
-            .setDMPermission(true),
+            .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel),
     ];
 
     async onChatInteraction(interaction: ChatInputCommandInteraction) {

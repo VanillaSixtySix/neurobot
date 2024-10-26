@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { EmbedBuilder, TextBasedChannel } from 'discord.js';
+import { EmbedBuilder, GuildTextBasedChannel } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { config, getServerConfig } from '../utils.ts';
@@ -77,26 +77,25 @@ export default class Twitch implements BotInteraction {
         if (guildId == null) {
             for (const serverConfig of config.servers) {
                 if (!serverConfig.interactions.twitch.pollResultsChannel) continue;
-                this.sockets.set(serverConfig.guildId, new WebSocket('wss://pubsub-edge.twitch.tv/v1'));
-                this.sockets.get(serverConfig.guildId)!.addEventListener('open', event => this.onOpen(serverConfig, event as any));
-                this.sockets.get(serverConfig.guildId)!.addEventListener('message', event => this.onMessage(serverConfig, event as any));
-                this.sockets.get(serverConfig.guildId)!.addEventListener('close', event => this.onClose(serverConfig, event as any));
-                this.sockets.get(serverConfig.guildId)!.addEventListener('error', event => this.onError(event as any));
-                this.totalCloses.set(serverConfig.guildId, 0);
+                this.openSocket(serverConfig, serverConfig.guildId);
             }
             return;
         }
         const serverConfig = getServerConfig(guildId);
         if (!serverConfig) return;
-        this.sockets.set(serverConfig.guildId, new WebSocket('wss://pubsub-edge.twitch.tv/v1'));
-        this.sockets.get(serverConfig.guildId)!.addEventListener('open', event => this.onOpen(serverConfig, event as any));
-        this.sockets.get(serverConfig.guildId)!.addEventListener('message', event => this.onMessage(serverConfig, event as any));
-        this.sockets.get(serverConfig.guildId)!.addEventListener('close', event => this.onClose(serverConfig, event as any));
-        this.sockets.get(serverConfig.guildId)!.addEventListener('error', event => this.onError(event as any));
-        this.totalCloses.set(serverConfig.guildId, 0);
+        this.openSocket(serverConfig, guildId);
     }
 
-    onOpen(serverConfig: ServerConfig, event: Event) {
+    openSocket(serverConfig: ServerConfig, guildId: string) {
+        this.sockets.set(guildId, new WebSocket('wss://pubsub-edge.twitch.tv/v1'));
+        this.sockets.get(guildId)!.addEventListener('open', () => this.onOpen(serverConfig));
+        this.sockets.get(guildId)!.addEventListener('message', event => this.onMessage(serverConfig, event as any));
+        this.sockets.get(guildId)!.addEventListener('close', event => this.onClose(serverConfig, event as any));
+        this.sockets.get(guildId)!.addEventListener('error', event => this.onError(event as any));
+        this.totalCloses.set(guildId, 0);
+    }
+
+    onOpen(serverConfig: ServerConfig) {
         this.sockets.get(serverConfig.guildId)!.send(JSON.stringify({
             type: 'LISTEN',
             data: {
@@ -127,9 +126,9 @@ export default class Twitch implements BotInteraction {
         const poll = (packet.data as PollCompleteData).poll;
 
         const pollResultsChannelId = serverConfig.interactions.twitch.pollResultsChannel;
-        let pollResultsChannel = this.client.channels.cache.get(pollResultsChannelId) as TextBasedChannel;
+        let pollResultsChannel = this.client.channels.cache.get(pollResultsChannelId) as GuildTextBasedChannel;
         if (!pollResultsChannel) {
-            pollResultsChannel = await this.client.channels.fetch(pollResultsChannelId) as TextBasedChannel;
+            pollResultsChannel = await this.client.channels.fetch(pollResultsChannelId) as GuildTextBasedChannel;
         }
         if (!pollResultsChannel) {
             console.error('Could not find poll results channel', pollResultsChannelId);
