@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ApplicationCommandType, Attachment, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, ContextMenuCommandBuilder, DiscordAPIError, DiscordjsErrorCodes, EmbedBuilder, GuildTextBasedChannel, Message, MessageContextMenuCommandInteraction, messageLink, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import { getServerConfig } from '../utils';
+import {config, getServerConfig} from '../utils';
 import { parseDiscordUserInput, saveMessageAttachments } from '../utils';
 import Reactions from './reactions';
 
@@ -221,7 +221,33 @@ export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
         });
     }
 
+    if (message.reference) {
+        // Reference
+        console.log(message.reference);
+
+        embed.addFields({
+            name: "Reference (reply/forward)",
+            value: await formatMessageReference(message)
+        });
+    }
+
     return embed;
+}
+
+async function formatMessageReference(message: Message): Promise<string> {
+    try {
+        let referredMessage = await message.fetchReference();
+        const externalServerConfig = referredMessage.guildId ? getServerConfig(referredMessage.guildId) : undefined;
+
+        // We can use messageSnapshot for forwarded messages when Discord releases them.
+        return `${referredMessage.author.displayName}: ${referredMessage.content}\n${(externalServerConfig ? `[Jump to referenced message](https://discord.com/channels/${referredMessage.guildId}/${referredMessage.channelId}/${referredMessage.id})` : "[Message outside of server]")}`;
+    } catch (e: any) {
+        if (e.code == "GuildChannelResolve") {
+            return "Outside of this server ):";
+        }
+        console.error(e);
+        return "Something went wrong.";
+    }
 }
 
 function makeShowFirstReactionsActionRow(): ActionRowBuilder<ButtonBuilder> {
