@@ -2,8 +2,7 @@ import { EmbedBuilder, EmbedData, Events, Message, TextChannel } from 'discord.j
 import { z } from 'zod';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
-import { getServerConfig, splitByLengthWithNearestDelimiter } from '../utils';
-import { RawPacket } from '../utils';
+import { getServerConfig, RawPacket, splitByLengthWithNearestDelimiter } from '../utils';
 import { zodResponseFormat } from 'openai/helpers/zod.mjs';
 
 interface RawPacketMessageUpdateData {
@@ -176,6 +175,7 @@ export default class JP implements BotInteraction {
 
     /**
      * Translates the given input from Japanese to English using DeepL.
+     * @param apiKey The DeepL API key.
      * @param input The input to translate.
      * @returns The translated text.
      */
@@ -201,7 +201,6 @@ export default class JP implements BotInteraction {
             throw new Error('DeepL returned status code ' + translationRes.status);
         }
 
-        const translation = (await translationRes.json() as any).translations[0].text;
-        return translation;
+        return (await translationRes.json() as any).translations[0].text;
     }
 }

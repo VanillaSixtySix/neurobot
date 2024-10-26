@@ -1,4 +1,10 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, Role } from 'discord.js';
+import {
+    ChatInputCommandInteraction,
+    PermissionFlagsBits,
+    SlashCommandBuilder,
+    Role,
+    InteractionContextType
+} from 'discord.js';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { getServerConfig } from '../utils';
@@ -11,7 +17,7 @@ export default class EmbedBan implements BotInteraction {
         new SlashCommandBuilder()
             .setName('embedban')
             .setDescription('Toggles the embed ban role on the user')
-            .setDMPermission(false)
+            .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
             .addStringOption(option =>
                 option

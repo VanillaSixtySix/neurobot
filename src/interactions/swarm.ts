@@ -79,6 +79,6 @@ export default class Swarm implements BotInteraction {
         const sql = `INSERT INTO swarm (guild_id, count, last_sticker_name, last_sticker_id) VALUES ($1, $2, $3, $4)
                      ON CONFLICT (guild_id) DO UPDATE SET count = excluded.count, last_sticker_name = excluded.last_sticker_name, last_sticker_id = excluded.last_sticker_id`;
         const updateStmt = this.client.db.query(sql);
-        const res = updateStmt.run(message.guildId, guildState.count, guildState.lastSticker.name, guildState.lastSticker.id);
+        updateStmt.run(message.guildId, guildState.count, guildState.lastSticker.name, guildState.lastSticker.id);
     }
 }

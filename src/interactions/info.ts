@@ -1,4 +1,21 @@
-import { ActionRowBuilder, ApplicationCommandType, Attachment, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, ContextMenuCommandBuilder, DiscordAPIError, DiscordjsErrorCodes, EmbedBuilder, GuildTextBasedChannel, Message, MessageContextMenuCommandInteraction, messageLink, PermissionFlagsBits, SlashCommandBuilder, Sticker } from 'discord.js';
+import {
+    ActionRowBuilder,
+    Attachment,
+    ButtonBuilder,
+    ButtonInteraction,
+    ButtonStyle,
+    ChatInputCommandInteraction,
+    ContextMenuCommandBuilder,
+    EmbedBuilder,
+    InteractionContextType,
+    Message,
+    MessageContextMenuCommandInteraction,
+    messageLink,
+    PermissionFlagsBits,
+    SlashCommandBuilder,
+    Sticker
+} from 'discord.js';
+import { ApplicationCommandType } from 'discord-api-types/v10';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { getServerConfig } from '../utils';
@@ -12,15 +29,17 @@ export default class Info implements BotInteraction {
         new ContextMenuCommandBuilder()
             .setName('Log')
             .setType(ApplicationCommandType.Message)
+            .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
         new ContextMenuCommandBuilder()
             .setName('Log and Delete')
             .setType(ApplicationCommandType.Message)
+            .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
         new SlashCommandBuilder()
             .setName('avatar')
             .setDescription('Displays the user\'s global and server avatars')
-            .setDMPermission(false)
+            .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
             .addStringOption(option =>
                 option
@@ -54,8 +73,8 @@ export default class Info implements BotInteraction {
             const embed = await makeInfoEmbed(message);
 
             const outChannel = await message.client.channels.fetch(interactionConfig.logChannel);
-            if (!outChannel?.isTextBased()) {
-                console.warn(`Channel ${interactionConfig.logChannel} is not a text channel`);
+            if (!outChannel?.isTextBased() || !(outChannel?.isSendable())) {
+                console.warn(`Channel ${interactionConfig.logChannel} is not a text channel, or cannot be sent to`);
                 await interaction.reply({ content: 'An error occurred executing this interaction - output channel set incorrectly.', ephemeral: true });
                 return;
             }
@@ -191,7 +210,7 @@ export async function makeInfoEmbed(message: Message): Promise<EmbedBuilder> {
         .setFooter({ text: 'Message ID: ' + message.id + '\nChannel ID: ' + message.channelId });
 
     if (message.editedTimestamp != null) {
-        const editedTimestamp = message.editedTimestamp != null ? Math.floor(message.editedTimestamp / 1000) : null;
+        const editedTimestamp = Math.floor(message.editedTimestamp / 1000);
         embed.addFields({ name: 'Edited', value: `<t:${editedTimestamp}:d> <t:${editedTimestamp}:T>` });
     }
 

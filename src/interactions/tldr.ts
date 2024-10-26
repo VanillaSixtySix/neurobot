@@ -1,4 +1,5 @@
-import { ApplicationCommandType, ChatInputCommandInteraction, Collection, ContextMenuCommandBuilder, DiscordAPIError, DiscordjsErrorCodes, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { Collection, ContextMenuCommandBuilder, DiscordAPIError, InteractionContextType, Message, MessageContextMenuCommandInteraction, PermissionFlagsBits } from 'discord.js';
+import { ApplicationCommandType } from 'discord-api-types/v10';
 import { BotInteraction } from '../classes/BotInteraction';
 import { BotClient } from '../classes/BotClient';
 import { zodResponseFormat } from 'openai/helpers/zod.mjs';
@@ -15,6 +16,7 @@ export default class TLDR implements BotInteraction {
         new ContextMenuCommandBuilder()
             .setName('TLDR Conversation')
             .setType(ApplicationCommandType.Message)
+            .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
     ];
 
