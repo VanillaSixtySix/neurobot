@@ -15,6 +15,7 @@ export default class TLDR implements BotInteraction {
     static builders = [
         new ContextMenuCommandBuilder()
             .setName('TLDR Conversation')
+            // @ts-ignore This is how it's meant to work
             .setType(ApplicationCommandType.Message)
             .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),

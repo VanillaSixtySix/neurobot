@@ -28,11 +28,13 @@ export default class Info implements BotInteraction {
     static builders = [
         new ContextMenuCommandBuilder()
             .setName('Log')
+            // @ts-ignore This is how it's meant to work, but TS keeps complaining so ignoring for now
             .setType(ApplicationCommandType.Message)
             .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
         new ContextMenuCommandBuilder()
             .setName('Log and Delete')
+            // @ts-ignore same here
             .setType(ApplicationCommandType.Message)
             .setContexts(InteractionContextType.Guild)
             .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
